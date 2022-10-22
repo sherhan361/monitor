@@ -1,87 +1,127 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"math/rand"
+	"net/http"
+	"reflect"
 	"runtime"
 	"time"
 )
 
-type Monitor struct {
-	Alloc,
-	TotalAlloc,
-	Sys,
-	Mallocs,
-	Frees,
-	LiveObjects,
-	PauseTotalNs uint64
+type Metrics struct {
+	Alloc         float64
+	BuckHashSys   float64
+	Frees         float64
+	GCCPUFraction float64
+	GCSys         float64
+	HeapAlloc     float64
+	HeapIdle      float64
+	HeapObjects   float64
+	HeapSys       float64
+	LastGC        float64
+	Lookups       float64
+	MCacheInuse   float64
+	MCacheSys     float64
+	MSpanInuse    float64
+	MSpanSys      float64
+	Mallocs       float64
+	NextGC        float64
+	NumForcedGC   float64
+	NumGC         float64
+	OtherSys      float64
+	PauseTotalNs  float64
+	StackInuse    float64
+	StackSys      float64
+	Sys           float64
+	TotalAlloc    float64
 
-	NumGC        uint32
-	NumGoroutine int
+	PollCount   int64
+	RandomValue float64
 }
 
-func NewMonitor(duration int) {
-	var m Monitor
-	var rtm runtime.MemStats
-	var interval = time.Duration(duration) * time.Second
+func ReportSender(m *Metrics, reportInterval int) {
+	var interval = time.Duration(reportInterval) * time.Second
 	for {
 		<-time.After(interval)
-
-		// Read full mem stats
-		runtime.ReadMemStats(&rtm)
-
-		// Number of goroutines
-		m.NumGoroutine = runtime.NumGoroutine()
-
-		// Misc memory stats
-		m.Alloc = rtm.Alloc
-		m.TotalAlloc = rtm.TotalAlloc
-		m.Sys = rtm.Sys
-		m.Mallocs = rtm.Mallocs
-		m.Frees = rtm.Frees
-
-		// Live objects = Mallocs - Frees
-		m.LiveObjects = m.Mallocs - m.Frees
-
-		// GC Stats
-		m.PauseTotalNs = rtm.PauseTotalNs
-		m.NumGC = rtm.NumGC
-
-		// Just encode to json and print
-		b, _ := json.Marshal(m)
-		fmt.Println(string(b))
+		fmt.Println("m:", m)
+		url := "http://127.0.0.1:8080"
+		metricsValue, _ := json.Marshal(m)
+		getUrl(m)
+		_, err := http.Post(url, "application/json", bytes.NewBuffer(metricsValue))
+		if err != nil {
+			fmt.Println("err:", err)
+		}
 	}
 }
 
-func main() {
-	pollInterval := 2
-	var rtm runtime.MemStats
-	runtime.ReadMemStats(&rtm)
-	fmt.Println("Alloc", rtm.Alloc)
-	fmt.Println("BuckHashSys", rtm.BuckHashSys)
-	fmt.Println("rtm.Frees:", rtm.Frees)
-	fmt.Println("rtm.GCCPUFraction:", rtm.GCCPUFraction)
-	fmt.Println("GCSys:", rtm.GCSys)
-	fmt.Println("HeapAlloc:", rtm.HeapAlloc)
-	fmt.Println("HeapIdle:", rtm.HeapIdle)
-	fmt.Println("HeapObjects:", rtm.HeapObjects)
-	fmt.Println("HeapSys:", rtm.HeapSys)
-	fmt.Println("LastGC:", rtm.LastGC)
-	fmt.Println("Lookups:", rtm.Lookups)
-	fmt.Println("MCacheInuse:", rtm.MCacheInuse)
-	fmt.Println("MCacheSys:", rtm.MCacheSys)
-	fmt.Println("MSpanInuse:", rtm.MSpanInuse)
-	fmt.Println("MSpanSys:", rtm.MSpanSys)
-	fmt.Println("Mallocs:", rtm.Mallocs)
-	fmt.Println("NextGC:", rtm.NextGC)
-	fmt.Println("NumForcedGC:", rtm.NumForcedGC)
-	fmt.Println("NumGC:", rtm.NumGC)
-	fmt.Println("OtherSys:", rtm.OtherSys)
-	fmt.Println("PauseTotalNs:", rtm.PauseTotalNs)
-	fmt.Println("StackInuse:", rtm.StackInuse)
-	fmt.Println("StackSys:", rtm.StackSys)
-	fmt.Println("Sys:", rtm.Sys)
-	fmt.Println("TotalAlloc:", rtm.TotalAlloc)
+func getUrl(m *Metrics) {
+	t := *m
+	v := reflect.ValueOf(t)
+	fmt.Println("RES:", v)
+	typeOfS := v.Type()
+	fmt.Println("typeOfS:", typeOfS)
+	for i := 0; i < v.NumField(); i++ {
+		fmt.Printf("Field: %s\tValue: %v Type: %s\n", typeOfS.Field(i).Name, v.Field(i).Interface(), v.Field(i).Type())
+	}
 
-	NewMonitor(pollInterval)
+}
+
+func Monitor(m *Metrics, pollInterval int) {
+	var rtm runtime.MemStats
+	var interval = time.Duration(pollInterval) * time.Second
+	var PollCount int64 = 0
+	for {
+		<-time.After(interval)
+		runtime.ReadMemStats(&rtm)
+
+		m.Alloc = float64(rtm.Alloc)
+		m.BuckHashSys = float64(rtm.BuckHashSys)
+		m.Frees = float64(rtm.Frees)
+		m.GCCPUFraction = rtm.GCCPUFraction
+		m.GCSys = float64(rtm.GCSys)
+		m.HeapAlloc = float64(rtm.HeapAlloc)
+		m.HeapIdle = float64(rtm.HeapIdle)
+		m.HeapObjects = float64(rtm.HeapObjects)
+		m.HeapSys = float64(rtm.HeapSys)
+		m.LastGC = float64(rtm.LastGC)
+		m.Lookups = float64(rtm.Lookups)
+		m.MCacheInuse = float64(rtm.MCacheInuse)
+		m.MCacheSys = float64(rtm.MCacheSys)
+		m.MSpanInuse = float64(rtm.MSpanInuse)
+		m.MSpanSys = float64(rtm.MSpanSys)
+		m.Mallocs = float64(rtm.Mallocs)
+		m.NextGC = float64(rtm.NextGC)
+		m.NumForcedGC = float64(rtm.NumForcedGC)
+		m.NumGC = float64(rtm.NumGC)
+		m.OtherSys = float64(rtm.OtherSys)
+		m.PauseTotalNs = float64(rtm.PauseTotalNs)
+		m.StackInuse = float64(rtm.StackInuse)
+		m.StackSys = float64(rtm.StackSys)
+		m.Sys = float64(rtm.Sys)
+		m.TotalAlloc = float64(rtm.TotalAlloc)
+
+		m.PollCount = PollCount
+		PollCount++
+		m.RandomValue = rand.Float64()
+		fmt.Println("Metrics:", m)
+	}
+
+}
+
+func main() {
+	pollInterval := 1
+	reportInterval := 2
+	var m Metrics
+
+	go Monitor(&m, pollInterval)
+	go ReportSender(&m, reportInterval)
+
+	var interval = time.Duration(reportInterval) * time.Second
+	for {
+		<-time.After(interval)
+		fmt.Println("m:", m)
+	}
 }
