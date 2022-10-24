@@ -46,27 +46,30 @@ func ReportSender(m *Metrics, reportInterval int) {
 	var interval = time.Duration(reportInterval) * time.Second
 	for {
 		<-time.After(interval)
-		fmt.Println("m:", m)
-		url := "http://127.0.0.1:8080"
-		metricsValue, _ := json.Marshal(m)
-		getUrl(m)
-		_, err := http.Post(url, "application/json", bytes.NewBuffer(metricsValue))
-		if err != nil {
-			fmt.Println("err:", err)
+		metrics := *m
+
+		v := reflect.ValueOf(metrics)
+		types := v.Type()
+		values := make([]interface{}, v.NumField())
+
+		for i := 0; i < v.NumField(); i++ {
+			values[i] = v.Field(i).Interface()
+
+			baseUrl := "http://127.0.0.1:8080/update/"
+			valueType := "gauge"
+			if reflect.TypeOf(values[i]).Name() == "int64" {
+				valueType = "counter"
+			}
+			testUrl := fmt.Sprintf("%v%v/%v/%v", baseUrl, valueType, types.Field(i).Name, values[i])
+			fmt.Println("testUrl:", testUrl)
+			metricsValue, _ := json.Marshal(metrics)
+			_, err := http.Post(testUrl, "application/json", bytes.NewBuffer(metricsValue))
+			if err != nil {
+				fmt.Println("err:", err)
+			}
+
 		}
 	}
-}
-
-func getUrl(m *Metrics) {
-	t := *m
-	v := reflect.ValueOf(t)
-	fmt.Println("RES:", v)
-	typeOfS := v.Type()
-	fmt.Println("typeOfS:", typeOfS)
-	for i := 0; i < v.NumField(); i++ {
-		fmt.Printf("Field: %s\tValue: %v Type: %s\n", typeOfS.Field(i).Name, v.Field(i).Interface(), v.Field(i).Type())
-	}
-
 }
 
 func Monitor(m *Metrics, pollInterval int) {
@@ -106,7 +109,6 @@ func Monitor(m *Metrics, pollInterval int) {
 		m.PollCount = PollCount
 		PollCount++
 		m.RandomValue = rand.Float64()
-		fmt.Println("Metrics:", m)
 	}
 
 }
