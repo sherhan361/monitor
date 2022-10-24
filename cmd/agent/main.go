@@ -114,16 +114,16 @@ func Monitor(m *Metrics, pollInterval int) {
 }
 
 func main() {
-	pollInterval := 1
-	reportInterval := 2
+	pollInterval := 2
+	reportInterval := 10
 	var m Metrics
 
 	go Monitor(&m, pollInterval)
 	go ReportSender(&m, reportInterval)
 
-	var interval = time.Duration(reportInterval) * time.Second
-	for {
-		<-time.After(interval)
-		fmt.Println("m:", m)
-	}
+	//var interval = time.Duration(reportInterval) * time.Second
+	//for {
+	//	<-time.After(interval)
+	//	fmt.Println("m:", m)
+	//}
 }
