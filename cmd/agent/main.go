@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
 	"reflect"
 	"runtime"
 	"time"
@@ -63,10 +64,27 @@ func ReportSender(m *Metrics, reportInterval int) {
 			testUrl := fmt.Sprintf("%v%v/%v/%v", baseUrl, valueType, types.Field(i).Name, values[i])
 			fmt.Println("testUrl:", testUrl)
 			metricsValue, _ := json.Marshal(metrics)
-			_, err := http.Post(testUrl, "application/json", bytes.NewBuffer(metricsValue))
+
+			//_, err := http.Post(testUrl, "text/plain", bytes.NewBuffer(metricsValue))
+			//if err != nil {
+			//	fmt.Println("err:", err)
+			//}
+
+			req, err := http.NewRequest(http.MethodPost, testUrl, bytes.NewBuffer(metricsValue))
 			if err != nil {
-				fmt.Println("err:", err)
+				fmt.Printf("client: could not create request: %s\n", err)
+				os.Exit(1)
 			}
+			req.Header.Set("Content-Type", "text/plain")
+			client := http.Client{
+				Timeout: 30 * time.Second,
+			}
+			res, err := client.Do(req)
+			if err != nil {
+				fmt.Printf("client: error making http request: %s\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("res:", res)
 
 		}
 	}
