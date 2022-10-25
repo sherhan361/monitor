@@ -61,30 +61,36 @@ func ReportSender(m *Metrics, reportInterval int) {
 			if reflect.TypeOf(values[i]).Name() == "int64" {
 				valueType = "counter"
 			}
-			testUrl := fmt.Sprintf("%v%v/%v/%v", baseURL, valueType, types.Field(i).Name, values[i])
-			fmt.Println("testUrl:", testUrl)
+			testURL := fmt.Sprintf("%v%v/%v/%v", baseURL, valueType, types.Field(i).Name, values[i])
+			fmt.Println("testUrl:", testURL)
 			metricsValue, _ := json.Marshal(metrics)
 
 			//_, err := http.Post(testUrl, "text/plain", bytes.NewBuffer(metricsValue))
 			//if err != nil {
 			//	fmt.Println("err:", err)
 			//}
-			req, err := http.NewRequest(http.MethodPost, testUrl, bytes.NewBuffer(metricsValue))
+			req, err := http.NewRequest(http.MethodPost, testURL, bytes.NewBuffer(metricsValue))
 			if err != nil {
 				fmt.Printf("client: could not create request: %s\n", err)
 				os.Exit(1)
 			}
 			req.Header.Set("Content-Type", "text/plain")
 			client := http.Client{
-				Timeout: 30 * time.Second,
+				Timeout: 5 * time.Second,
 			}
-			_, errors := client.Do(req)
+			response, errors := client.Do(req)
 			if errors != nil {
 				fmt.Printf("client: error making http request: %s\n", errors)
 				os.Exit(1)
 			}
+			e := response.Body.Close()
 
+			if e != nil {
+				fmt.Printf("close resp error: %s\n", e)
+				os.Exit(1)
+			}
 		}
+
 	}
 }
 
@@ -137,9 +143,9 @@ func main() {
 	go Monitor(&m, pollInterval)
 	go ReportSender(&m, reportInterval)
 
-	//var interval = time.Duration(reportInterval) * time.Second
-	//for {
-	//	<-time.After(interval)
-	//	fmt.Println("m:", m)
-	//}
+	var interval = time.Duration(reportInterval) * time.Second
+	for {
+		<-time.After(interval)
+		fmt.Println("m:", m)
+	}
 }
