@@ -56,12 +56,12 @@ func ReportSender(m *Metrics, reportInterval int) {
 		for i := 0; i < v.NumField(); i++ {
 			values[i] = v.Field(i).Interface()
 
-			baseUrl := "http://127.0.0.1:8080/update/"
+			baseURL := "http://127.0.0.1:8080/update/"
 			valueType := "gauge"
 			if reflect.TypeOf(values[i]).Name() == "int64" {
 				valueType = "counter"
 			}
-			testUrl := fmt.Sprintf("%v%v/%v/%v", baseUrl, valueType, types.Field(i).Name, values[i])
+			testUrl := fmt.Sprintf("%v%v/%v/%v", baseURL, valueType, types.Field(i).Name, values[i])
 			fmt.Println("testUrl:", testUrl)
 			metricsValue, _ := json.Marshal(metrics)
 
@@ -69,7 +69,6 @@ func ReportSender(m *Metrics, reportInterval int) {
 			//if err != nil {
 			//	fmt.Println("err:", err)
 			//}
-
 			req, err := http.NewRequest(http.MethodPost, testUrl, bytes.NewBuffer(metricsValue))
 			if err != nil {
 				fmt.Printf("client: could not create request: %s\n", err)
@@ -79,12 +78,11 @@ func ReportSender(m *Metrics, reportInterval int) {
 			client := http.Client{
 				Timeout: 30 * time.Second,
 			}
-			res, err := client.Do(req)
-			if err != nil {
-				fmt.Printf("client: error making http request: %s\n", err)
+			_, errors := client.Do(req)
+			if errors != nil {
+				fmt.Printf("client: error making http request: %s\n", errors)
 				os.Exit(1)
 			}
-			fmt.Println("res:", res)
 
 		}
 	}
