@@ -6,22 +6,21 @@ import (
 	"sync"
 )
 
-type memStorage struct {
+type MemStorage struct {
 	mutex    sync.RWMutex
 	Gauges   map[string]float64
 	Counters map[string]int64
 }
 
-func New() *memStorage {
-	m := &memStorage{
+func New() *MemStorage {
+	return &MemStorage{
 		mutex:    sync.RWMutex{},
 		Gauges:   make(map[string]float64),
 		Counters: make(map[string]int64),
 	}
-	return m
 }
 
-func (m *memStorage) Set(typ, name, value string) error {
+func (m *MemStorage) Set(typ, name, value string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
