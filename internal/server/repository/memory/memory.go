@@ -1,4 +1,4 @@
-package ram
+package memory
 
 import (
 	"errors"
@@ -7,14 +7,14 @@ import (
 )
 
 type MemStorage struct {
-	mutex    sync.RWMutex
+	mutex    *sync.RWMutex
 	Gauges   map[string]float64
 	Counters map[string]int64
 }
 
 func New() *MemStorage {
 	return &MemStorage{
-		mutex:    sync.RWMutex{},
+		mutex:    &sync.RWMutex{},
 		Gauges:   make(map[string]float64),
 		Counters: make(map[string]int64),
 	}
@@ -25,25 +25,25 @@ func (m *MemStorage) Set(typ, name, value string) error {
 	defer m.mutex.Unlock()
 
 	if typ == "counter" {
-		value, err := strconv.ParseInt(value, 10, 64)
+		countValue, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			return err
 		}
 		_, ok := m.Counters[name]
 		if ok {
-			m.Counters[name] = m.Counters[name] + value
+			m.Counters[name] = m.Counters[name] + countValue
 		} else {
-			m.Counters[name] = value
+			m.Counters[name] = countValue
 		}
 		return nil
 	}
 
 	if typ == "gauge" {
-		value, err := strconv.ParseFloat(value, 64)
+		floatValue, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			return err
 		}
-		m.Gauges[name] = value
+		m.Gauges[name] = floatValue
 		return nil
 	}
 
