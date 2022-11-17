@@ -2,6 +2,7 @@ package memory
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 )
@@ -18,6 +19,34 @@ func New() *MemStorage {
 		Gauges:   make(map[string]float64),
 		Counters: make(map[string]int64),
 	}
+}
+
+func (m *MemStorage) GetAll() (map[string]float64, map[string]int64) {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return m.Gauges, m.Counters
+}
+
+func (m *MemStorage) Get(typ, name string) (string, error) {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	value := ""
+	if typ == "gauge" {
+		val, ok := m.Gauges[name]
+		if ok {
+			value = fmt.Sprintf("%.2f", val)
+		}
+	}
+	if typ == "counter" {
+		val, ok := m.Counters[name]
+		if ok {
+			value = fmt.Sprintf("%d", val)
+		}
+	}
+	if value == "" {
+		return "", errors.New("metric not found")
+	}
+	return value, nil
 }
 
 func (m *MemStorage) Set(typ, name, value string) error {
