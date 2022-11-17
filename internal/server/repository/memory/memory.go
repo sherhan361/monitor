@@ -34,7 +34,7 @@ func (m *MemStorage) Get(typ, name string) (string, error) {
 	if typ == "gauge" {
 		val, ok := m.Gauges[name]
 		if ok {
-			value = fmt.Sprintf("%.2f", val)
+			value = fmt.Sprintf("%.3f", val)
 		}
 	}
 	if typ == "counter" {
