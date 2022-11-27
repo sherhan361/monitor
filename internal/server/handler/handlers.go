@@ -62,7 +62,7 @@ func checkParams(typ string, name string, value string) int {
 	if typ == "" || name == "" || value == "" {
 		return http.StatusBadRequest
 	}
-	if typ == "none" || name == "none" || value == "none" {
+	if name == "none" || value == "none" {
 		return http.StatusBadRequest
 	}
 	if typ != "gauge" && typ != "counter" {

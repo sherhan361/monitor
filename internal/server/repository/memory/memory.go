@@ -24,7 +24,9 @@ func New() *MemStorage {
 func (m *MemStorage) GetAll() (map[string]float64, map[string]int64) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	return m.Gauges, m.Counters
+	gauges := m.Gauges
+	counters := m.Counters
+	return gauges, counters
 }
 
 func (m *MemStorage) Get(typ, name string) (string, error) {
@@ -53,7 +55,8 @@ func (m *MemStorage) Set(typ, name, value string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	if typ == "counter" {
+	switch typ {
+	case "counter":
 		countValue, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			return err
@@ -65,16 +68,14 @@ func (m *MemStorage) Set(typ, name, value string) error {
 			m.Counters[name] = countValue
 		}
 		return nil
-	}
-
-	if typ == "gauge" {
+	case "gauge":
 		floatValue, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			return err
 		}
 		m.Gauges[name] = floatValue
 		return nil
+	default:
+		return errors.New("invalid metric type")
 	}
-
-	return errors.New("invalid request params")
 }

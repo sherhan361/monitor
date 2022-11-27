@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -6,8 +6,7 @@ import (
 	"testing"
 )
 
-func TestUpdateStats(t *testing.T) {
-	var m Metrics
+func TestUpdateMetrics(t *testing.T) {
 	var rtm runtime.MemStats
 	type values struct {
 		m   *Metrics
@@ -22,7 +21,10 @@ func TestUpdateStats(t *testing.T) {
 		{
 			name: "Test 1",
 			args: values{
-				m:   &m,
+				m: &Metrics{
+					Gauges:   map[string]float64{},
+					Counters: map[string]int64{},
+				},
 				rtm: &rtm,
 			},
 			want: 1,
@@ -30,9 +32,9 @@ func TestUpdateStats(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			updateStats(tt.args.m, tt.args.rtm)
-			assert.NotEmpty(t, m)
-			if m.PollCount != tt.want {
+			updateMetrics(tt.args.m, tt.args.rtm)
+			assert.NotEmpty(t, tt.args.m)
+			if tt.args.m.Counters["PollCount"] != tt.want {
 				t.Errorf("значение счетчика должно быть %d", tt.want)
 			}
 		})

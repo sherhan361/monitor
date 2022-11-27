@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"fmt"
 	"math/rand"
+	"net/http"
 	"runtime"
 	"sync"
 	"time"
@@ -13,25 +15,53 @@ type Metrics struct {
 	Counters map[string]int64
 }
 
-func NewMonitor(pollInterval int) *Metrics {
+func NewMonitor(pollInterval int, reportInterval int, baseURL string) {
 	m := &Metrics{
 		mutex:    sync.RWMutex{},
 		Gauges:   make(map[string]float64),
 		Counters: make(map[string]int64),
 	}
 
-	go startMonitor(m, pollInterval)
-
-	return m
+	startMonitor(m, time.Duration(pollInterval)*time.Second, reportInterval, baseURL)
 }
 
-func startMonitor(m *Metrics, pollInterval int) {
+func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval int, baseURL string) {
 	var rtm runtime.MemStats
-	var interval = time.Duration(pollInterval) * time.Second
+	var lastSend time.Time
 	for {
-		<-time.After(interval)
+		<-time.After(pollInterval)
 		runtime.ReadMemStats(&rtm)
 		updateMetrics(m, &rtm)
+		dif := int(time.Since(lastSend) / time.Second)
+		if dif >= reportInterval {
+			sendReport(m, baseURL)
+			lastSend = time.Now()
+		}
+	}
+}
+
+func sendReport(m *Metrics, baseURL string) {
+	var client = http.Client{}
+
+	for key, value := range m.Gauges {
+		url := fmt.Sprintf("%s/%s/%s/%s/%.3f", baseURL, "update", "gauge", key, value)
+		resp, err := client.Post(url, "text/plain", nil)
+		if err != nil {
+			fmt.Printf("Send Gauges Error: %s\n", err)
+		} else {
+			resp.Body.Close()
+		}
+
+	}
+	fmt.Println("app.metrics.Counters:", m.Counters)
+	for key, value := range m.Counters {
+		url := fmt.Sprintf("%s/%s/%s/%s/%d", baseURL, "update", "counter", key, value)
+		resp, err := client.Post(url, "text/plain", nil)
+		if err != nil {
+			fmt.Printf("Send Counters Error: %s\n", err)
+		} else {
+			resp.Body.Close()
+		}
 	}
 }
 
