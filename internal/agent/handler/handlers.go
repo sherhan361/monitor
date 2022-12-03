@@ -60,6 +60,7 @@ func sendReport(m *Metrics, baseURL string) {
 		if err != nil {
 			fmt.Printf("Send Counters Error: %s\n", err)
 		} else {
+			m.Counters["PollCount"] = 0
 			resp.Body.Close()
 		}
 	}

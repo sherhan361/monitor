@@ -24,8 +24,14 @@ func New() *MemStorage {
 func (m *MemStorage) GetAll() (map[string]float64, map[string]int64) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	gauges := m.Gauges
-	counters := m.Counters
+	gauges := make(map[string]float64, len(m.Gauges))
+	for key, value := range m.Gauges {
+		gauges[key] = value
+	}
+	counters := make(map[string]int64, len(m.Counters))
+	for key, value := range m.Counters {
+		counters[key] = value
+	}
 	return gauges, counters
 }
 
@@ -33,20 +39,24 @@ func (m *MemStorage) Get(typ, name string) (string, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 	value := ""
-	if typ == "gauge" {
+	switch typ {
+	case "gauge":
 		val, ok := m.Gauges[name]
 		if ok {
 			value = fmt.Sprintf("%.3f", val)
+		} else {
+			return "", errors.New("metric name not found in Gauges")
 		}
-	}
-	if typ == "counter" {
+
+	case "counter":
 		val, ok := m.Counters[name]
 		if ok {
 			value = fmt.Sprintf("%d", val)
+		} else {
+			return "", errors.New("metric name not found in Counters")
 		}
-	}
-	if value == "" {
-		return "", errors.New("metric not found")
+	default:
+		return "", errors.New("metric type not found")
 	}
 	return value, nil
 }
@@ -67,6 +77,7 @@ func (m *MemStorage) Set(typ, name, value string) error {
 		} else {
 			m.Counters[name] = countValue
 		}
+		fmt.Println("m.Counters[PollCount]:", m.Counters["PollCount"])
 		return nil
 	case "gauge":
 		floatValue, err := strconv.ParseFloat(value, 64)
