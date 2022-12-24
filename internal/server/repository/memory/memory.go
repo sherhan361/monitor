@@ -7,6 +7,13 @@ import (
 	"sync"
 )
 
+type Metrics struct {
+	ID    string   `json:"id"`              // имя метрики
+	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
+	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
+	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+}
+
 type MemStorage struct {
 	mutex    *sync.RWMutex
 	Gauges   map[string]float64
@@ -85,6 +92,66 @@ func (m *MemStorage) Set(typ, name, value string) error {
 			return err
 		}
 		m.Gauges[name] = floatValue
+		return nil
+	default:
+		return errors.New("invalid metric type")
+	}
+}
+
+func (m *MemStorage) GetMetricsByID(id, typ string) (*Metrics, error) {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	var input Metrics
+
+	switch typ {
+	case "gauge":
+		v, ok := m.Gauges[id]
+		if ok {
+			input.ID = id
+			input.MType = "gauge"
+			input.Value = &v
+		}
+	case "counter":
+		v, ok := m.Counters[id]
+		if ok {
+			input.ID = id
+			input.MType = "counter"
+			input.Delta = &v
+		}
+	default:
+		return nil, errors.New("invalid metric type")
+	}
+
+	if input.ID == "" {
+		return nil, errors.New("not found")
+	}
+
+	return &input, nil
+}
+
+func (m *MemStorage) SetMetrics(metrics *Metrics) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	switch metrics.MType {
+	case "gauge":
+		if metrics.Value == nil {
+			m.Gauges[metrics.ID] = 0
+		} else {
+			m.Gauges[metrics.ID] = *metrics.Value
+		}
+		return nil
+	case "counter":
+		if metrics.Delta == nil {
+			return errors.New("invalid params")
+		}
+		value, ok := m.Counters[metrics.ID]
+
+		if ok {
+			m.Counters[metrics.ID] = value + *metrics.Delta
+		} else {
+			m.Counters[metrics.ID] = *metrics.Delta
+		}
 		return nil
 	default:
 		return errors.New("invalid metric type")
