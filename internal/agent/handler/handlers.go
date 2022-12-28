@@ -17,25 +17,24 @@ type Metrics struct {
 	Counters map[string]int64
 }
 
-func NewMonitor(pollInterval int, reportInterval int, baseURL string) {
+func NewMonitor(pollInterval time.Duration, reportInterval time.Duration, baseURL string) {
 	m := &Metrics{
 		mutex:    sync.RWMutex{},
 		Gauges:   make(map[string]float64),
 		Counters: make(map[string]int64),
 	}
 
-	startMonitor(m, time.Duration(pollInterval)*time.Second, reportInterval, baseURL)
+	startMonitor(m, pollInterval, reportInterval, baseURL)
 }
 
-func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval int, baseURL string) {
+func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Duration, baseURL string) {
 	var rtm runtime.MemStats
 	var lastSend time.Time
 	for {
 		<-time.After(pollInterval)
 		runtime.ReadMemStats(&rtm)
 		updateMetrics(m, &rtm)
-		dif := int(time.Since(lastSend) / time.Second)
-		if dif >= reportInterval {
+		if time.Since(lastSend) >= reportInterval {
 			sendReport(m, baseURL)
 			lastSend = time.Now()
 		}
