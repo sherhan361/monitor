@@ -49,7 +49,7 @@ func sendReport(m *Metrics, baseURL string) {
 		Value float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 	}
 	var client = http.Client{}
-	url := fmt.Sprintf("%s/%s", baseURL, "update")
+	url := fmt.Sprintf("http://%s/%s", baseURL, "update")
 	contentType := "application/json"
 
 	for key, value := range m.Gauges {
