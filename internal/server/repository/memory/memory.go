@@ -1,8 +1,10 @@
 package memory
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"sync"
 )
@@ -156,4 +158,34 @@ func (m *MemStorage) SetMetrics(metrics *Metrics) error {
 	default:
 		return errors.New("invalid metric type")
 	}
+}
+
+func (m *MemStorage) RestoreMetrics(filename string) error {
+	content, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+	var metrics []Metrics
+	err = json.Unmarshal([]byte(content), &metrics)
+	if err != nil {
+		return err
+	}
+
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	for _, metric := range metrics {
+		switch metric.MType {
+		case "gauge":
+			if metric.Value != nil {
+				m.Gauges[metric.ID] = *metric.Value
+			}
+		case "counter":
+			if metric.Delta != nil {
+				m.Counters[metric.ID] = *metric.Delta
+			}
+		}
+	}
+
+	return nil
 }

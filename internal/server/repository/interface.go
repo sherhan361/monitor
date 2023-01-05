@@ -11,8 +11,10 @@ type Getter interface {
 
 	GetMetricsByID(id, typ string) (*memory.Metrics, error)
 	SetMetrics(*memory.Metrics) error
+
+	RestoreMetrics(filename string) error
 }
 
-func NewGetter() (Getter, error) {
+func NewMemoryStorage() (Getter, error) {
 	return memory.New(), nil
 }
