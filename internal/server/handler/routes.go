@@ -23,6 +23,7 @@ func (h *Handlers) Routes() *chi.Mux {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
+	r.Use(GzipCompress)
 
 	r.Get("/", h.GetAllMetrics)
 	r.Route("/value", func(r chi.Router) {

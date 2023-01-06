@@ -21,6 +21,7 @@ func (h *Handlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	ggs, _ := json.Marshal(gauges)
 	cnts, _ := json.Marshal(counters)
 	str := fmt.Sprintf("Gauges: %s\n Counters: %s\n", string(ggs), string(cnts))
+	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
 	_, err := w.Write([]byte(str))
 	if err != nil {
