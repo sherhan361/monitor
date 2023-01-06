@@ -27,9 +27,11 @@ func (h *Handlers) Routes() *chi.Mux {
 	r.Get("/", h.GetAllMetrics)
 	r.Route("/value", func(r chi.Router) {
 		r.Get("/{type}/{name}", h.GetMetric)
+		r.Post("/", h.GetMetricsJSON)
 	})
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/{type}/{name}/{value}", h.CreateMetric)
+		r.Post("/", h.CreateMetricsFromJSON)
 	})
 	return r
 }

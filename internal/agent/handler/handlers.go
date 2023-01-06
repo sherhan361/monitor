@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -15,25 +17,24 @@ type Metrics struct {
 	Counters map[string]int64
 }
 
-func NewMonitor(pollInterval int, reportInterval int, baseURL string) {
+func NewMonitor(pollInterval time.Duration, reportInterval time.Duration, baseURL string) {
 	m := &Metrics{
 		mutex:    sync.RWMutex{},
 		Gauges:   make(map[string]float64),
 		Counters: make(map[string]int64),
 	}
 
-	startMonitor(m, time.Duration(pollInterval)*time.Second, reportInterval, baseURL)
+	startMonitor(m, pollInterval, reportInterval, baseURL)
 }
 
-func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval int, baseURL string) {
+func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Duration, baseURL string) {
 	var rtm runtime.MemStats
 	var lastSend time.Time
 	for {
 		<-time.After(pollInterval)
 		runtime.ReadMemStats(&rtm)
 		updateMetrics(m, &rtm)
-		dif := int(time.Since(lastSend) / time.Second)
-		if dif >= reportInterval {
+		if time.Since(lastSend) >= reportInterval {
 			sendReport(m, baseURL)
 			lastSend = time.Now()
 		}
@@ -41,11 +42,28 @@ func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval int, ba
 }
 
 func sendReport(m *Metrics, baseURL string) {
+	type Metric struct {
+		ID    string  `json:"id"`              // имя метрики
+		MType string  `json:"type"`            // параметр, принимающий значение gauge или counter
+		Delta int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
+		Value float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+	}
 	var client = http.Client{}
+	url := fmt.Sprintf("http://%s/%s", baseURL, "update")
+	contentType := "application/json"
 
 	for key, value := range m.Gauges {
-		url := fmt.Sprintf("%s/%s/%s/%s/%.3f", baseURL, "update", "gauge", key, value)
-		resp, err := client.Post(url, "text/plain", nil)
+		oneMetric := Metric{
+			ID:    key,
+			MType: "gauge",
+			Value: value,
+		}
+		fmt.Println("Gauges oneMetric:", oneMetric)
+		metricJSON, err := json.Marshal(oneMetric)
+		if err != nil {
+			fmt.Printf("json Gauges Error: %s\n", err)
+		}
+		resp, err := client.Post(url, contentType, bytes.NewBuffer(metricJSON))
 		if err != nil {
 			fmt.Printf("Send Gauges Error: %s\n", err)
 		} else {
@@ -55,8 +73,17 @@ func sendReport(m *Metrics, baseURL string) {
 	}
 	fmt.Println("app.metrics.Counters:", m.Counters)
 	for key, value := range m.Counters {
-		url := fmt.Sprintf("%s/%s/%s/%s/%d", baseURL, "update", "counter", key, value)
-		resp, err := client.Post(url, "text/plain", nil)
+		oneMetric := Metric{
+			ID:    key,
+			MType: "counter",
+			Delta: value,
+		}
+		fmt.Println("oneMetric:", oneMetric)
+		metricJSON, err := json.Marshal(oneMetric)
+		if err != nil {
+			fmt.Printf("json Counters Error: %s\n", err)
+		}
+		resp, err := client.Post(url, contentType, bytes.NewBuffer(metricJSON))
 		if err != nil {
 			fmt.Printf("Send Counters Error: %s\n", err)
 		} else {
