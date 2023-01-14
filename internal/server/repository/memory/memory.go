@@ -4,17 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/sherhan361/monitor/internal/models"
 	"io/ioutil"
 	"strconv"
 	"sync"
 )
-
-type Metrics struct {
-	ID    string   `json:"id"`              // имя метрики
-	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
-}
 
 type MemStorage struct {
 	mutex    *sync.RWMutex
@@ -100,10 +94,10 @@ func (m *MemStorage) Set(typ, name, value string) error {
 	}
 }
 
-func (m *MemStorage) GetMetricsByID(id, typ string) (*Metrics, error) {
+func (m *MemStorage) GetMetricsByID(id, typ string) (*models.Metric, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	var input Metrics
+	var input models.Metric
 
 	switch typ {
 	case "gauge":
@@ -131,7 +125,7 @@ func (m *MemStorage) GetMetricsByID(id, typ string) (*Metrics, error) {
 	return &input, nil
 }
 
-func (m *MemStorage) SetMetrics(metrics *Metrics) error {
+func (m *MemStorage) SetMetrics(metrics *models.Metric) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -165,7 +159,7 @@ func (m *MemStorage) RestoreMetrics(filename string) error {
 	if err != nil {
 		return err
 	}
-	var metrics []Metrics
+	var metrics []models.Metric
 	err = json.Unmarshal([]byte(content), &metrics)
 	if err != nil {
 		return err

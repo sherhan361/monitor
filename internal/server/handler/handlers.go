@@ -4,17 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/sherhan361/monitor/internal/server/repository/memory"
 	"log"
 	"net/http"
-)
 
-type Metrics struct {
-	ID    string   `json:"id"`              // имя метрики
-	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
-}
+	"github.com/sherhan361/monitor/internal/models"
+)
 
 func (h *Handlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	gauges, counters := h.repository.GetAll()
@@ -81,8 +75,9 @@ func checkParams(typ string, name string, value string) int {
 }
 
 func (h *Handlers) GetMetricsJSON(w http.ResponseWriter, r *http.Request) {
-	var input memory.Metrics
+	var input models.Metric
 	decodeData := json.NewDecoder(r.Body)
+	defer r.Body.Close()
 	err := decodeData.Decode(&input)
 	if err != nil {
 		log.Println(err)
@@ -117,8 +112,9 @@ func (h *Handlers) GetMetricsJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) CreateMetricsFromJSON(w http.ResponseWriter, r *http.Request) {
-	var input *memory.Metrics
+	var input *models.Metric
 	decodeData := json.NewDecoder(r.Body)
+	defer r.Body.Close()
 	err := decodeData.Decode(&input)
 	if err != nil {
 		log.Println(err)
@@ -131,5 +127,27 @@ func (h *Handlers) CreateMetricsFromJSON(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
+	metric, err := h.repository.GetMetricsByID(input.ID, input.MType)
+	if err != nil {
+		log.Println(err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	js, err := json.Marshal(metric)
+	if err != nil {
+		log.Println(err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(js)
+	if err != nil {
+		log.Println(err)
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/sherhan361/monitor/internal/models"
 	"math/rand"
 	"net/http"
 	"runtime"
@@ -42,21 +43,15 @@ func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Du
 }
 
 func sendReport(m *Metrics, baseURL string) {
-	type Metric struct {
-		ID    string  `json:"id"`              // имя метрики
-		MType string  `json:"type"`            // параметр, принимающий значение gauge или counter
-		Delta int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-		Value float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
-	}
 	var client = http.Client{}
 	url := fmt.Sprintf("http://%s/%s", baseURL, "update")
 	contentType := "application/json"
 
 	for key, value := range m.Gauges {
-		oneMetric := Metric{
+		oneMetric := models.Metric{
 			ID:    key,
 			MType: "gauge",
-			Value: value,
+			Value: &value,
 		}
 		fmt.Println("Gauges oneMetric:", oneMetric)
 		metricJSON, err := json.Marshal(oneMetric)
@@ -73,10 +68,10 @@ func sendReport(m *Metrics, baseURL string) {
 	}
 	fmt.Println("app.metrics.Counters:", m.Counters)
 	for key, value := range m.Counters {
-		oneMetric := Metric{
+		oneMetric := models.Metric{
 			ID:    key,
 			MType: "counter",
-			Delta: value,
+			Delta: &value,
 		}
 		fmt.Println("oneMetric:", oneMetric)
 		metricJSON, err := json.Marshal(oneMetric)

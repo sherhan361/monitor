@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"github.com/sherhan361/monitor/internal/models"
 	"github.com/sherhan361/monitor/internal/server/repository/memory"
 )
 
@@ -9,8 +10,8 @@ type Getter interface {
 	Get(typ, name string) (string, error)
 	Set(typ, name, value string) error
 
-	GetMetricsByID(id, typ string) (*memory.Metrics, error)
-	SetMetrics(*memory.Metrics) error
+	GetMetricsByID(id, typ string) (*models.Metric, error)
+	SetMetrics(*models.Metric) error
 
 	RestoreMetrics(filename string) error
 }
