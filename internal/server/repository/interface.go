@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/sherhan361/monitor/internal/models"
+	"github.com/sherhan361/monitor/internal/server/config"
 	"github.com/sherhan361/monitor/internal/server/repository/memory"
 )
 
@@ -14,8 +15,9 @@ type Getter interface {
 	SetMetrics(*models.Metric) error
 
 	RestoreMetrics(filename string) error
+	WriteMetrics() error
 }
 
-func NewMemoryStorage() (Getter, error) {
-	return memory.New(), nil
+func NewMemoryStorage(cfg config.Config) (Getter, error) {
+	return memory.New(cfg), nil
 }

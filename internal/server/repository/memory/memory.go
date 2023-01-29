@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/sherhan361/monitor/internal/models"
+	"github.com/sherhan361/monitor/internal/server/config"
 	"io/ioutil"
+	"log"
+	"os"
 	"strconv"
 	"sync"
 )
@@ -14,13 +17,15 @@ type MemStorage struct {
 	mutex    *sync.RWMutex
 	Gauges   map[string]float64
 	Counters map[string]int64
+	Config   config.Config
 }
 
-func New() *MemStorage {
+func New(cfg config.Config) *MemStorage {
 	return &MemStorage{
 		mutex:    &sync.RWMutex{},
 		Gauges:   make(map[string]float64),
 		Counters: make(map[string]int64),
+		Config:   cfg,
 	}
 }
 
@@ -80,7 +85,6 @@ func (m *MemStorage) Set(typ, name, value string) error {
 		} else {
 			m.Counters[name] = countValue
 		}
-		fmt.Println("m.Counters[PollCount]:", m.Counters["PollCount"])
 		return nil
 	case "gauge":
 		floatValue, err := strconv.ParseFloat(value, 64)
@@ -127,7 +131,6 @@ func (m *MemStorage) GetMetricsByID(id, typ string) (*models.Metric, error) {
 
 func (m *MemStorage) SetMetrics(metrics *models.Metric) error {
 	m.mutex.Lock()
-	defer m.mutex.Unlock()
 
 	switch metrics.MType {
 	case "gauge":
@@ -135,6 +138,13 @@ func (m *MemStorage) SetMetrics(metrics *models.Metric) error {
 			m.Gauges[metrics.ID] = 0
 		} else {
 			m.Gauges[metrics.ID] = *metrics.Value
+		}
+		m.mutex.Unlock()
+		if m.Config.StoreInterval == 0 {
+			err := m.WriteMetrics()
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	case "counter":
@@ -148,8 +158,16 @@ func (m *MemStorage) SetMetrics(metrics *models.Metric) error {
 		} else {
 			m.Counters[metrics.ID] = *metrics.Delta
 		}
+		m.mutex.Unlock()
+		if m.Config.StoreInterval == 0 {
+			err := m.WriteMetrics()
+			if err != nil {
+				return err
+			}
+		}
 		return nil
 	default:
+		m.mutex.Unlock()
 		return errors.New("invalid metric type")
 	}
 }
@@ -179,6 +197,46 @@ func (m *MemStorage) RestoreMetrics(filename string) error {
 				m.Counters[metric.ID] = *metric.Delta
 			}
 		}
+	}
+
+	return nil
+}
+
+func (m *MemStorage) WriteMetrics() error {
+	var metrics []models.WriteMetric
+	file, err := os.OpenFile(m.Config.StoreFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0777)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	gauges, counters := m.GetAll()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	for key, value := range gauges {
+		var metric = models.WriteMetric{}
+		metric.ID = key
+		metric.MType = "gauge"
+		metric.Value = value
+		metrics = append(metrics, metric)
+	}
+
+	for key, value := range counters {
+		var metric = models.WriteMetric{}
+		metric.ID = key
+		metric.MType = "counter"
+		metric.Delta = value
+		metrics = append(metrics, metric)
+	}
+
+	jsonData, err := json.Marshal(&metrics)
+	if err != nil {
+		return err
+	}
+
+	_, err = file.Write(jsonData)
+	if err != nil {
+		log.Println(err)
 	}
 
 	return nil

@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"io"
 	"log"
 	"net/http"
 
@@ -112,42 +114,58 @@ func (h *Handlers) GetMetricsJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) CreateMetricsFromJSON(w http.ResponseWriter, r *http.Request) {
-	var input *models.Metric
-	decodeData := json.NewDecoder(r.Body)
-	defer r.Body.Close()
-	err := decodeData.Decode(&input)
+	var reader io.Reader
+	if r.Header.Get(`Content-Encoding`) == `gzip` {
+		gz, err := gzip.NewReader(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		reader = gz
+		defer gz.Close()
+	} else {
+		reader = r.Body
+		defer r.Body.Close()
+	}
+
+	body, err := io.ReadAll(reader)
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = h.repository.SetMetrics(input)
+
+	metric := models.Metric{}
+	erUnm := json.Unmarshal(body, &metric)
+	if erUnm != nil {
+		fmt.Println("err", erUnm)
+	}
+
+	err = h.repository.SetMetrics(&metric)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	metric, err := h.repository.GetMetricsByID(input.ID, input.MType)
+	storMetric, err := h.repository.GetMetricsByID(metric.ID, metric.MType)
 	if err != nil {
 		log.Println(err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
-	js, err := json.Marshal(metric)
+	js, err := json.Marshal(storMetric)
 	if err != nil {
 		log.Println(err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(js)
 	if err != nil {
 		log.Println(err)
 	}
+
 }

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"compress/gzip"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -20,6 +21,7 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 func GzipCompress(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			fmt.Println("no gzip:")
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -28,7 +30,7 @@ func GzipCompress(next http.Handler) http.Handler {
 		if err != nil {
 			_, e := io.WriteString(w, err.Error())
 			if e != nil {
-				log.Println(e)
+				log.Println("gzip error", e)
 			}
 			return
 		}
