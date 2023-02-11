@@ -173,7 +173,7 @@ func (m *MemStorage) SetMetrics(metrics *models.Metric) error {
 }
 
 func (m *MemStorage) RestoreMetrics(filename string) error {
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
