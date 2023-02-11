@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/sherhan361/monitor/internal/models"
 	"github.com/sherhan361/monitor/internal/server/config"
-	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
@@ -211,8 +210,6 @@ func (m *MemStorage) WriteMetrics() error {
 	defer file.Close()
 
 	gauges, counters := m.GetAll()
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
 	for key, value := range gauges {
 		var metric = models.WriteMetric{}
 		metric.ID = key
