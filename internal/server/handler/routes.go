@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/sherhan361/monitor/internal/server/config"
 	"github.com/sherhan361/monitor/internal/server/repository"
 )
 
@@ -12,10 +13,14 @@ type Repository interface {
 
 type Handlers struct {
 	repository Repository
+	cfg        config.Config
 }
 
-func NewHandlers(repository repository.Getter) *Handlers {
-	return &Handlers{repository: repository}
+func NewHandlers(repository repository.Getter, config config.Config) *Handlers {
+	return &Handlers{
+		repository: repository,
+		cfg:        config,
+	}
 }
 
 func (h *Handlers) Routes() *chi.Mux {

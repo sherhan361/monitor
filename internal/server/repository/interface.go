@@ -11,7 +11,7 @@ type Getter interface {
 	Get(typ, name string) (string, error)
 	Set(typ, name, value string) error
 
-	GetMetricsByID(id, typ string) (*models.Metric, error)
+	GetMetricsByID(id, typ string, key string) (*models.Metric, error)
 	SetMetrics(*models.Metric) error
 
 	RestoreMetrics(filename string) error
