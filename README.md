@@ -30,3 +30,10 @@ git fetch template && git checkout template/main .github
 ```
 
 Затем добавьте полученные изменения в свой репозиторий.
+
+
+
+Запуск базы
+``` shell script
+docker run --name monitor-db -e POSTGRES_PASSWORD=example POSTGRES_DB=monitor -p 5432:5432 postgres
+```
