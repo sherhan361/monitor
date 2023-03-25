@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"fmt"
 	"github.com/caarlos0/env/v6"
 	"log"
 	"time"
@@ -14,6 +13,7 @@ type Config struct {
 	StoreFile     string        `env:"STORE_FILE"`
 	Restore       bool          `env:"RESTORE"`
 	Key           string        `env:"KEY"`
+	DSN           string        `env:"DATABASE_DSN"`
 }
 
 type ArgConfig struct {
@@ -22,6 +22,7 @@ type ArgConfig struct {
 	StoreFile     string
 	Restore       bool
 	Key           string
+	DSN           string
 }
 
 func GetConfig() Config {
@@ -37,9 +38,9 @@ func GetConfig() Config {
 	flag.StringVar(&argCfg.StoreFile, "f", "/tmp/devops-metrics-db.json", "filename to backup")
 	flag.BoolVar(&argCfg.Restore, "r", true, "is restore enabled")
 	flag.StringVar(&argCfg.Key, "k", "", "sign key")
+	flag.StringVar(&argCfg.DSN, "d", "", "DB DSN")
 	flag.Parse()
 
-	fmt.Println("server argCfg.Key:", argCfg.Key)
 	if cfg.BaseURL == "" {
 		cfg.BaseURL = argCfg.BaseURL
 	}
@@ -52,9 +53,11 @@ func GetConfig() Config {
 	if !cfg.Restore {
 		cfg.Restore = argCfg.Restore
 	}
-	fmt.Println("server cfg.Key:", cfg.Key)
 	if cfg.Key == "" {
 		cfg.Key = argCfg.Key
+	}
+	if cfg.DSN == "" {
+		cfg.DSN = argCfg.DSN
 	}
 	return cfg
 }

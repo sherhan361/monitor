@@ -19,7 +19,7 @@ func main() {
 	cfg := config.GetConfig()
 	fmt.Println("server cfg", cfg)
 
-	db, err := sql.Open("pgx", "postgres://postgres:example@localhost:5432/monitor")
+	db, err := sql.Open("pgx", cfg.DSN)
 	if err != nil {
 		fmt.Println("err:", err)
 	}
