@@ -35,5 +35,5 @@ git fetch template && git checkout template/main .github
 
 Запуск базы
 ``` shell script
-docker run --name monitor-db -e POSTGRES_PASSWORD=example POSTGRES_DB=monitor -p 5432:5432 postgres
+ docker run --name monitor-db -e POSTGRES_PASSWORD=example -e POSTGRES_DB=monitor -p 5432:5432 postgres
 ```
