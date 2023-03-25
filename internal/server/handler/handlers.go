@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/sherhan361/monitor/internal/common"
 	"io"
 	"log"
 	"net/http"
@@ -88,7 +89,7 @@ func (h *Handlers) GetMetricsJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metric, err := h.repository.GetMetricsByID(input.ID, input.MType)
+	metric, err := h.repository.GetMetricsByID(input.ID, input.MType, h.cfg.Key)
 	if err != nil {
 		log.Println(err)
 		w.Header().Set("Content-Type", "application/json")
@@ -140,6 +141,15 @@ func (h *Handlers) CreateMetricsFromJSON(w http.ResponseWriter, r *http.Request)
 		fmt.Println("err", erUnm)
 	}
 
+	if h.cfg.Key != "" {
+		fmt.Println("h.cfg.Key:", h.cfg.Key)
+		if !isValidHash(metric, h.cfg.Key) {
+			fmt.Println("err hash:")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+
 	err = h.repository.SetMetrics(&metric)
 	if err != nil {
 		log.Println(err)
@@ -147,12 +157,15 @@ func (h *Handlers) CreateMetricsFromJSON(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	storMetric, err := h.repository.GetMetricsByID(metric.ID, metric.MType)
+	storMetric, err := h.repository.GetMetricsByID(metric.ID, metric.MType, h.cfg.Key)
 	if err != nil {
 		log.Println(err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 		return
+	}
+	if h.cfg.Key != "" {
+		storMetric.Hash = common.GetHash(*storMetric, h.cfg.Key)
 	}
 	js, err := json.Marshal(storMetric)
 	if err != nil {
@@ -168,4 +181,8 @@ func (h *Handlers) CreateMetricsFromJSON(w http.ResponseWriter, r *http.Request)
 		log.Println(err)
 	}
 
+}
+
+func isValidHash(m models.Metric, key string) bool {
+	return m.Hash == common.GetHash(m, key)
 }

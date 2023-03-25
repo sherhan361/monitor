@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/sherhan361/monitor/internal/common"
 	"github.com/sherhan361/monitor/internal/models"
 	"github.com/sherhan361/monitor/internal/server/config"
 	"log"
@@ -97,7 +98,7 @@ func (m *MemStorage) Set(typ, name, value string) error {
 	}
 }
 
-func (m *MemStorage) GetMetricsByID(id, typ string) (*models.Metric, error) {
+func (m *MemStorage) GetMetricsByID(id, typ string, signKey string) (*models.Metric, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 	var input models.Metric
@@ -109,6 +110,9 @@ func (m *MemStorage) GetMetricsByID(id, typ string) (*models.Metric, error) {
 			input.ID = id
 			input.MType = "gauge"
 			input.Value = &v
+			if signKey != "" {
+				input.Hash = common.GetHash(input, signKey)
+			}
 		}
 	case "counter":
 		v, ok := m.Counters[id]
@@ -116,6 +120,9 @@ func (m *MemStorage) GetMetricsByID(id, typ string) (*models.Metric, error) {
 			input.ID = id
 			input.MType = "counter"
 			input.Delta = &v
+			if signKey != "" {
+				input.Hash = common.GetHash(input, signKey)
+			}
 		}
 	default:
 		return nil, errors.New("invalid metric type")

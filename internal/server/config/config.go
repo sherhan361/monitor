@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"github.com/caarlos0/env/v6"
 	"log"
 	"time"
@@ -12,6 +13,7 @@ type Config struct {
 	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 	StoreFile     string        `env:"STORE_FILE"`
 	Restore       bool          `env:"RESTORE"`
+	Key           string        `env:"KEY"`
 }
 
 type ArgConfig struct {
@@ -19,6 +21,7 @@ type ArgConfig struct {
 	StoreInterval time.Duration
 	StoreFile     string
 	Restore       bool
+	Key           string
 }
 
 func GetConfig() Config {
@@ -33,7 +36,10 @@ func GetConfig() Config {
 	flag.DurationVar(&argCfg.StoreInterval, "i", time.Duration(300*time.Second), "backup interval")
 	flag.StringVar(&argCfg.StoreFile, "f", "/tmp/devops-metrics-db.json", "filename to backup")
 	flag.BoolVar(&argCfg.Restore, "r", true, "is restore enabled")
+	flag.StringVar(&argCfg.Key, "k", "", "sign key")
 	flag.Parse()
+
+	fmt.Println("server argCfg.Key:", argCfg.Key)
 	if cfg.BaseURL == "" {
 		cfg.BaseURL = argCfg.BaseURL
 	}
@@ -45,6 +51,10 @@ func GetConfig() Config {
 	}
 	if !cfg.Restore {
 		cfg.Restore = argCfg.Restore
+	}
+	fmt.Println("server cfg.Key:", cfg.Key)
+	if cfg.Key == "" {
+		cfg.Key = argCfg.Key
 	}
 	return cfg
 }

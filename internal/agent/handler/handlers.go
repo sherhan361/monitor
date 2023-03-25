@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/sherhan361/monitor/internal/common"
 	"github.com/sherhan361/monitor/internal/models"
 	"math/rand"
 	"net/http"
@@ -18,17 +19,17 @@ type Metrics struct {
 	Counters map[string]int64
 }
 
-func NewMonitor(pollInterval time.Duration, reportInterval time.Duration, baseURL string) {
+func NewMonitor(pollInterval time.Duration, reportInterval time.Duration, baseURL string, key string) {
 	m := &Metrics{
 		mutex:    sync.RWMutex{},
 		Gauges:   make(map[string]float64),
 		Counters: make(map[string]int64),
 	}
 
-	startMonitor(m, pollInterval, reportInterval, baseURL)
+	startMonitor(m, pollInterval, reportInterval, baseURL, key)
 }
 
-func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Duration, baseURL string) {
+func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Duration, baseURL string, key string) {
 	var rtm runtime.MemStats
 	var lastSend time.Time
 	for {
@@ -36,13 +37,13 @@ func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Du
 		runtime.ReadMemStats(&rtm)
 		updateMetrics(m, &rtm)
 		if time.Since(lastSend) >= reportInterval {
-			sendReport(m, baseURL)
+			sendReport(m, baseURL, key)
 			lastSend = time.Now()
 		}
 	}
 }
 
-func sendReport(m *Metrics, baseURL string) {
+func sendReport(m *Metrics, baseURL string, signKey string) {
 	var client = http.Client{}
 	url := fmt.Sprintf("http://%s/%s", baseURL, "update")
 	contentType := "application/json"
@@ -53,7 +54,10 @@ func sendReport(m *Metrics, baseURL string) {
 			MType: "gauge",
 			Value: &value,
 		}
-		fmt.Println("Gauges oneMetric:", oneMetric)
+		if signKey != "" {
+			oneMetric.Hash = common.GetHash(oneMetric, signKey)
+		}
+		fmt.Println("gauge oneMetric:", oneMetric)
 		metricJSON, err := json.Marshal(oneMetric)
 		if err != nil {
 			fmt.Printf("json Gauges Error: %s\n", err)
@@ -73,7 +77,10 @@ func sendReport(m *Metrics, baseURL string) {
 			MType: "counter",
 			Delta: &value,
 		}
-		fmt.Println("oneMetric:", oneMetric)
+		if signKey != "" {
+			oneMetric.Hash = common.GetHash(oneMetric, signKey)
+		}
+		fmt.Println("counter oneMetric:", oneMetric)
 		metricJSON, err := json.Marshal(oneMetric)
 		if err != nil {
 			fmt.Printf("json Counters Error: %s\n", err)

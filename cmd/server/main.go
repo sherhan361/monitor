@@ -17,7 +17,7 @@ import (
 
 func main() {
 	cfg := config.GetConfig()
-	fmt.Println("cfg", cfg)
+	fmt.Println("server cfg", cfg)
 
 	db, err := sql.Open("pgx", "postgres://postgres:example@localhost:5432/monitor")
 	if err != nil {
@@ -51,6 +51,6 @@ func main() {
 	}
 	go backuper.Run()
 
-	h := handler.NewHandlers(strg)
+	h := handler.NewHandlers(strg, cfg)
 	log.Fatal(http.ListenAndServe(cfg.BaseURL, h.Routes()))
 }
