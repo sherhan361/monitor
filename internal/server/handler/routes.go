@@ -31,6 +31,7 @@ func (h *Handlers) Routes() *chi.Mux {
 	r.Use(GzipCompress)
 
 	r.Get("/", h.GetAllMetrics)
+	r.Get("/ping", h.Ping)
 	r.Route("/value", func(r chi.Router) {
 		r.Get("/{type}/{name}", h.GetMetric)
 		r.Post("/", h.GetMetricsJSON)

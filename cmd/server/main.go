@@ -1,45 +1,24 @@
 package main
 
 import (
-	"context"
-	"database/sql"
 	"fmt"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sherhan361/monitor/internal/server/config"
 	"github.com/sherhan361/monitor/internal/server/handler"
 	"github.com/sherhan361/monitor/internal/server/repository"
 	"github.com/sherhan361/monitor/internal/server/service"
 	"log"
 	"net/http"
-	"time"
-
-	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 func main() {
 	cfg := config.GetConfig()
 	fmt.Println("server cfg", cfg)
 
-	db, err := sql.Open("pgx", cfg.DSN)
-	if err != nil {
-		fmt.Println("err:", err)
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
-	defer cancel()
-	if err = db.PingContext(ctx); err != nil {
-		panic(err)
-	}
-	fmt.Println("ping!")
-
-	strg, err := repository.NewMemoryStorage(cfg)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	strg := GetStor(cfg)
 
 	if cfg.Restore {
-		err = strg.RestoreMetrics(cfg.StoreFile)
+		err := strg.RestoreMetrics(cfg.StoreFile)
 		if err != nil {
 			log.Println(err)
 		}
@@ -53,4 +32,21 @@ func main() {
 
 	h := handler.NewHandlers(strg, cfg)
 	log.Fatal(http.ListenAndServe(cfg.BaseURL, h.Routes()))
+}
+
+func GetStor(cfg config.Config) repository.Getter {
+	if cfg.DSN == "" {
+		strg, err := repository.NewMemoryStorage(cfg)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return strg
+
+	} else {
+		strg, err := repository.NewDBStorage(cfg)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return strg
+	}
 }

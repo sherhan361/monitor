@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/sherhan361/monitor/internal/common"
+	"github.com/sherhan361/monitor/internal/models"
 	"io"
 	"log"
 	"net/http"
-
-	"github.com/sherhan361/monitor/internal/models"
 )
 
 func (h *Handlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
@@ -24,6 +23,15 @@ func (h *Handlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalln(err)
 	}
+}
+
+func (h *Handlers) Ping(w http.ResponseWriter, r *http.Request) {
+	err := h.repository.Ping()
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {

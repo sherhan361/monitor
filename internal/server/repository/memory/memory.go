@@ -20,6 +20,10 @@ type MemStorage struct {
 	Config   config.Config
 }
 
+func (m *MemStorage) Ping() error {
+	return nil
+}
+
 func New(cfg config.Config) *MemStorage {
 	return &MemStorage{
 		mutex:    &sync.RWMutex{},
