@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/sherhan361/monitor/internal/common"
 	"github.com/sherhan361/monitor/internal/models"
 	"github.com/sherhan361/monitor/internal/server/config"
 	"strconv"
@@ -62,12 +63,74 @@ func (d DBStor) Ping() error {
 	return nil
 }
 
+func (d DBStor) GetRowsCounter() (*sql.Rows, error) {
+	rows, err := d.db.Query("SELECT name, value from counter")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return rows, nil
+}
+
 func (d DBStor) GetAll() (map[string]float64, map[string]int64) {
-	return nil, nil
+	counters := map[string]int64{}
+	gauges := map[string]float64{}
+
+	rows, err := d.GetRowsCounter()
+	if err != nil {
+		return nil, nil
+	}
+
+	for rows.Next() {
+		var name string
+		var value int64
+		err := rows.Scan(&name, &value)
+		if err != nil {
+			return nil, nil
+		}
+		counters[name] = value
+	}
+	if err = rows.Err(); err != nil {
+		return nil, nil
+	}
+
+	rows, err = d.db.Query("SELECT name, value from gauge")
+	if err != nil {
+		return nil, nil
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var name string
+		var value float64
+		err := rows.Scan(&name, &value)
+		if err != nil {
+			return nil, nil
+		}
+		gauges[name] = value
+	}
+	if err = rows.Err(); err != nil {
+		return nil, nil
+	}
+
+	return gauges, counters
 }
 
 func (d DBStor) Get(typ, name string) (string, error) {
-	return "", nil
+	switch typ {
+	case "counter":
+		var counter string
+		row := d.db.QueryRow("SELECT value FROM counter WHERE name = $1", name)
+		err := row.Scan(&counter)
+		return counter, err
+	case "gauge":
+		var gauge string
+		row := d.db.QueryRow("SELECT value FROM gauge WHERE name = $1", name)
+		err := row.Scan(&gauge)
+		return gauge, err
+	default:
+		return "", errors.New("invalid metric type")
+	}
 }
 
 func (d DBStor) Set(typ, name, value string) error {
@@ -98,11 +161,83 @@ func (d DBStor) Set(typ, name, value string) error {
 }
 
 func (d DBStor) GetMetricsByID(id, typ string, key string) (*models.Metric, error) {
-	return nil, nil
+	var input models.Metric
+
+	switch typ {
+	case "gauge":
+		var gauge float64
+		row := d.db.QueryRow("SELECT value FROM gauge WHERE name = $1", id)
+		err := row.Scan(&gauge)
+
+		if err == nil {
+			input.ID = id
+			input.MType = "gauge"
+			input.Value = &gauge
+			if key != "" {
+				input.Hash = common.GetHash(input, key)
+			}
+		}
+	case "counter":
+		var counter int64
+		row := d.db.QueryRow("SELECT value FROM counter WHERE name = $1", id)
+		err := row.Scan(&counter)
+
+		if err == nil {
+			input.ID = id
+			input.MType = "counter"
+			input.Delta = &counter
+			if key != "" {
+				input.Hash = common.GetHash(input, key)
+			}
+		}
+	default:
+		return nil, errors.New("invalid metric type")
+	}
+
+	if input.ID == "" {
+		return nil, errors.New("not found")
+	}
+
+	return &input, nil
 }
 
 func (d DBStor) SetMetrics(metric *models.Metric) error {
-	return nil
+	switch metric.MType {
+	case "gauge":
+		var gauge float64
+		if metric.Value == nil {
+			gauge = 0
+		} else {
+			gauge = *metric.Value
+		}
+		err := d.setGauge(metric.ID, gauge)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	case "counter":
+		if metric.Delta == nil {
+			return errors.New("invalid params")
+		}
+		var value int64
+		row := d.db.QueryRow("SELECT value FROM counter WHERE name = $1", metric.ID)
+		err := row.Scan(&value)
+		var counter int64
+		if err == nil {
+			counter = value + *metric.Delta
+		} else {
+			counter = *metric.Delta
+		}
+		err = d.setCounter(metric.ID, counter)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	default:
+		return errors.New("invalid metric type")
+	}
 }
 
 func (d DBStor) RestoreMetrics(filename string) error {

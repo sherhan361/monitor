@@ -55,7 +55,7 @@ func (m *MemStorage) Get(typ, name string) (string, error) {
 	case "gauge":
 		val, ok := m.Gauges[name]
 		if ok {
-			value = fmt.Sprintf("%.3f", val)
+			value = fmt.Sprintf("%.2f", val)
 		} else {
 			return "", errors.New("metric name not found in Gauges")
 		}
