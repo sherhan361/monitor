@@ -220,16 +220,7 @@ func (d DBStor) SetMetrics(metric *models.Metric) error {
 		if metric.Delta == nil {
 			return errors.New("invalid params")
 		}
-		var value int64
-		row := d.db.QueryRow("SELECT value FROM counter WHERE name = $1", metric.ID)
-		err := row.Scan(&value)
-		var counter int64
-		if err == nil {
-			counter = value + *metric.Delta
-		} else {
-			counter = *metric.Delta
-		}
-		err = d.setCounter(metric.ID, counter)
+		err := d.setCounter(metric.ID, *metric.Delta)
 		if err != nil {
 			return err
 		}
