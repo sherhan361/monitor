@@ -191,6 +191,75 @@ func (h *Handlers) CreateMetricsFromJSON(w http.ResponseWriter, r *http.Request)
 
 }
 
+func (h *Handlers) CreateMetricBatchJSON(w http.ResponseWriter, r *http.Request) {
+	var reader io.Reader
+	if r.Header.Get(`Content-Encoding`) == `gzip` {
+		gz, err := gzip.NewReader(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		reader = gz
+		defer gz.Close()
+	} else {
+		reader = r.Body
+		defer r.Body.Close()
+	}
+
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var metrics []models.Metric
+	erUnm := json.Unmarshal(body, &metrics)
+	if erUnm != nil {
+		fmt.Println("err", erUnm)
+	}
+
+	if h.cfg.Key != "" {
+		fmt.Println("h.cfg.Key:", h.cfg.Key)
+		if !isValidHash(metric, h.cfg.Key) {
+			fmt.Println("err hash:")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+
+	err = h.repository.SetMetrics(&metric)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	storMetric, err := h.repository.GetMetricsByID(metric.ID, metric.MType, h.cfg.Key)
+	if err != nil {
+		log.Println(err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if h.cfg.Key != "" {
+		storMetric.Hash = common.GetHash(*storMetric, h.cfg.Key)
+	}
+	js, err := json.Marshal(storMetric)
+	if err != nil {
+		log.Println(err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(js)
+	if err != nil {
+		log.Println(err)
+	}
+
+}
+
 func isValidHash(m models.Metric, key string) bool {
 	return m.Hash == common.GetHash(m, key)
 }
