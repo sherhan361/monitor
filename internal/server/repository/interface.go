@@ -14,6 +14,7 @@ type Getter interface {
 
 	GetMetricsByID(id, typ string, key string) (*models.Metric, error)
 	SetMetrics(*models.Metric) error
+	SetMetricsBatch(MetricsBatch []models.Metric) error
 
 	RestoreMetrics(filename string) error
 	WriteMetrics() error

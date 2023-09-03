@@ -231,6 +231,23 @@ func (d DBStor) SetMetrics(metric *models.Metric) error {
 	}
 }
 
+func (d DBStor) SetMetricsBatch(MetricBatch []models.Metric) error {
+	MetricValueBatch := models.Metric{}
+	for _, OneMetric := range MetricBatch {
+		MetricValueBatch = models.Metric{
+			ID:    OneMetric.ID,
+			MType: OneMetric.MType,
+			Delta: OneMetric.Delta,
+			Value: OneMetric.Value,
+		}
+		err := d.SetMetrics(&MetricValueBatch)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (d DBStor) RestoreMetrics(filename string) error {
 	return nil
 }

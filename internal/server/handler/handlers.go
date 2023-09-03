@@ -220,31 +220,38 @@ func (h *Handlers) CreateMetricBatchJSON(w http.ResponseWriter, r *http.Request)
 
 	if h.cfg.Key != "" {
 		fmt.Println("h.cfg.Key:", h.cfg.Key)
-		if !isValidHash(metric, h.cfg.Key) {
-			fmt.Println("err hash:")
-			w.WriteHeader(http.StatusBadRequest)
-			return
+		for _, metric := range metrics {
+			if !isValidHash(metric, h.cfg.Key) {
+				fmt.Println("err hash:")
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
 		}
 	}
 
-	err = h.repository.SetMetrics(&metric)
+	err = h.repository.SetMetricsBatch(metrics)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	storMetric, err := h.repository.GetMetricsByID(metric.ID, metric.MType, h.cfg.Key)
-	if err != nil {
-		log.Println(err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		return
+	var storageMetrics []models.Metric
+	for _, metric := range metrics {
+		storMetric, err := h.repository.GetMetricsByID(metric.ID, metric.MType, h.cfg.Key)
+		if err != nil {
+			log.Println(err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if h.cfg.Key != "" {
+			storMetric.Hash = common.GetHash(*storMetric, h.cfg.Key)
+		}
+		storageMetrics = append(storageMetrics, *storMetric)
 	}
-	if h.cfg.Key != "" {
-		storMetric.Hash = common.GetHash(*storMetric, h.cfg.Key)
-	}
-	js, err := json.Marshal(storMetric)
+
+	js, err := json.Marshal(storageMetrics)
 	if err != nil {
 		log.Println(err)
 		w.Header().Set("Content-Type", "application/json")
