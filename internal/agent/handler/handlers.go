@@ -37,8 +37,8 @@ func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Du
 		runtime.ReadMemStats(&rtm)
 		updateMetrics(m, &rtm)
 		if time.Since(lastSend) >= reportInterval {
-			sendReport(m, baseURL, key)
-			//sendBatchReport(m, baseURL, key)
+			//sendReport(m, baseURL, key)
+			sendBatchReport(m, baseURL, key)
 			lastSend = time.Now()
 		}
 	}
@@ -59,7 +59,6 @@ func sendReport(m *Metrics, baseURL string, signKey string) {
 			oneMetric.Hash = common.GetHash(oneMetric, signKey)
 		}
 		fmt.Println("gauge oneMetric:", oneMetric)
-		//TODO: сохранять в массив, вместо отправки
 		metricJSON, err := json.Marshal(oneMetric)
 		if err != nil {
 			fmt.Printf("json Gauges Error: %s\n", err)
@@ -95,7 +94,6 @@ func sendReport(m *Metrics, baseURL string, signKey string) {
 			resp.Body.Close()
 		}
 	}
-	//TODO: упаковать в json и отправить на updates
 }
 
 func sendBatchReport(m *Metrics, baseURL string, signKey string) {
