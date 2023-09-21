@@ -37,7 +37,7 @@ func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Du
 		runtime.ReadMemStats(&rtm)
 		updateMetrics(m, &rtm)
 		if time.Since(lastSend) >= reportInterval {
-			//sendReport(m, baseURL, key)
+			sendReport(m, baseURL, key)
 			sendBatchReport(m, baseURL, key)
 			lastSend = time.Now()
 		}
