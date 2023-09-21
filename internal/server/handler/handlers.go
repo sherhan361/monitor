@@ -192,7 +192,7 @@ func (h *Handlers) CreateMetricsFromJSON(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *Handlers) CreateMetricBatchJSON(w http.ResponseWriter, r *http.Request) {
-	var reader io.Reader
+
 	//if r.Header.Get(`Content-Encoding`) == `gzip` {
 	//	gz, err := gzip.NewReader(r.Body)
 	//	if err != nil {
@@ -205,6 +205,7 @@ func (h *Handlers) CreateMetricBatchJSON(w http.ResponseWriter, r *http.Request)
 	//	reader = r.Body
 	//	defer r.Body.Close()
 	//}
+	var reader io.Reader
 	reader = r.Body
 	defer r.Body.Close()
 
