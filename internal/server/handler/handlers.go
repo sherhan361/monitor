@@ -193,18 +193,20 @@ func (h *Handlers) CreateMetricsFromJSON(w http.ResponseWriter, r *http.Request)
 
 func (h *Handlers) CreateMetricBatchJSON(w http.ResponseWriter, r *http.Request) {
 	var reader io.Reader
-	if r.Header.Get(`Content-Encoding`) == `gzip` {
-		gz, err := gzip.NewReader(r.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		reader = gz
-		defer gz.Close()
-	} else {
-		reader = r.Body
-		defer r.Body.Close()
-	}
+	//if r.Header.Get(`Content-Encoding`) == `gzip` {
+	//	gz, err := gzip.NewReader(r.Body)
+	//	if err != nil {
+	//		http.Error(w, err.Error(), http.StatusInternalServerError)
+	//		return
+	//	}
+	//	reader = gz
+	//	defer gz.Close()
+	//} else {
+	//	reader = r.Body
+	//	defer r.Body.Close()
+	//}
+	reader = r.Body
+	defer r.Body.Close()
 
 	body, err := io.ReadAll(reader)
 	if err != nil {
