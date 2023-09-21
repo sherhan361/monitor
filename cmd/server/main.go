@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sherhan361/monitor/internal/server/config"
 	"github.com/sherhan361/monitor/internal/server/handler"
@@ -13,7 +12,7 @@ import (
 
 func main() {
 	cfg := config.GetConfig()
-	fmt.Println("server cfg", cfg)
+	log.Println("server cfg", cfg)
 
 	strg := GetStor(cfg)
 

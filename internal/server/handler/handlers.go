@@ -146,13 +146,13 @@ func (h *Handlers) CreateMetricsFromJSON(w http.ResponseWriter, r *http.Request)
 	metric := models.Metric{}
 	erUnm := json.Unmarshal(body, &metric)
 	if erUnm != nil {
-		fmt.Println("err", erUnm)
+		log.Println("err", erUnm)
 	}
 
 	if h.cfg.Key != "" {
-		fmt.Println("h.cfg.Key:", h.cfg.Key)
+		log.Println("h.cfg.Key:", h.cfg.Key)
 		if !isValidHash(metric, h.cfg.Key) {
-			fmt.Println("err hash:")
+			log.Println("err hash:")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -215,14 +215,14 @@ func (h *Handlers) CreateMetricBatchJSON(w http.ResponseWriter, r *http.Request)
 	var metrics []models.Metric
 	erUnm := json.Unmarshal(body, &metrics)
 	if erUnm != nil {
-		fmt.Println("err", erUnm)
+		log.Println("err", erUnm)
 	}
 
 	if h.cfg.Key != "" {
-		fmt.Println("h.cfg.Key:", h.cfg.Key)
+		log.Println("h.cfg.Key:", h.cfg.Key)
 		for _, metric := range metrics {
 			if !isValidHash(metric, h.cfg.Key) {
-				fmt.Println("err hash:")
+				log.Println("err hash:")
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}

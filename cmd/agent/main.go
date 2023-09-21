@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/caarlos0/env/v6"
 	"github.com/sherhan361/monitor/internal/agent/handler"
 	"log"
@@ -37,7 +36,7 @@ func main() {
 	flag.StringVar(&argCfg.Key, "k", "", "sign key")
 	flag.Parse()
 
-	fmt.Println("agent argCfg.Key:", argCfg.Key)
+	log.Println("agent argCfg.Key:", argCfg.Key)
 	if cfg.BaseURL == "" {
 		cfg.BaseURL = argCfg.BaseURL
 	}
@@ -47,11 +46,11 @@ func main() {
 	if cfg.PollInterval == 0 {
 		cfg.PollInterval = argCfg.PollInterval
 	}
-	fmt.Println("agent cfg.Key:", cfg.Key)
+	log.Println("agent cfg.Key:", cfg.Key)
 	if cfg.Key == "" {
 		cfg.Key = argCfg.Key
 	}
 
-	fmt.Println("agent cfg:", cfg)
+	log.Println("agent cfg:", cfg)
 	handler.NewMonitor(cfg.PollInterval, cfg.ReportInterval, cfg.BaseURL, cfg.Key)
 }

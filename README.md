@@ -37,3 +37,8 @@ git fetch template && git checkout template/main .github
 ``` shell script
  docker run --name monitor-db -e POSTGRES_PASSWORD=example -e POSTGRES_DB=monitor -p 5432:5432 postgres
 ```
+
+Создание gz архива
+``` shell script
+tar -czf all.json.gz all.json
+```

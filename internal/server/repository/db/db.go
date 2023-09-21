@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"github.com/sherhan361/monitor/internal/common"
 	"github.com/sherhan361/monitor/internal/models"
 	"github.com/sherhan361/monitor/internal/server/config"
+	"log"
 	"strconv"
 	"time"
 )
@@ -20,7 +20,7 @@ type DBStor struct {
 func New(cfg config.Config) DBStor {
 	db, err := sql.Open("pgx", cfg.DSN)
 	if err != nil {
-		fmt.Println("err:", err)
+		log.Println("err:", err)
 	}
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(20)
@@ -29,11 +29,11 @@ func New(cfg config.Config) DBStor {
 
 	_, err = db.Exec("CREATE TABLE IF NOT EXISTS counter (id serial PRIMARY KEY, name VARCHAR (128) UNIQUE NOT NULL, value BIGINT NOT NULL)")
 	if err != nil {
-		fmt.Println("create counter table error:", err)
+		log.Println("create counter table error:", err)
 	}
 	_, err = db.Exec("CREATE TABLE IF NOT EXISTS gauge (id serial PRIMARY KEY, name VARCHAR (128) UNIQUE NOT NULL, value DOUBLE PRECISION NOT NULL)")
 	if err != nil {
-		fmt.Println("create gauge table error:", err)
+		log.Println("create gauge table error:", err)
 	}
 
 	return DBStor{
@@ -59,7 +59,7 @@ func (d DBStor) Ping() error {
 	if err := d.db.PingContext(ctx); err != nil {
 		panic(err)
 	}
-	fmt.Println("ping!")
+	log.Println("ping!")
 	return nil
 }
 
