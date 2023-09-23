@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -73,7 +74,7 @@ func (m *MemStorage) Get(typ, name string) (string, error) {
 	return value, nil
 }
 
-func (m *MemStorage) Set(typ, name, value string) error {
+func (m *MemStorage) Set(typ, name, value string, ctx context.Context) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -139,7 +140,7 @@ func (m *MemStorage) GetMetricsByID(id, typ string, signKey string) (*models.Met
 	return &input, nil
 }
 
-func (m *MemStorage) SetMetrics(metrics *models.Metric) error {
+func (m *MemStorage) SetMetrics(metrics *models.Metric, ctx context.Context) error {
 	m.mutex.Lock()
 
 	switch metrics.MType {
@@ -182,7 +183,7 @@ func (m *MemStorage) SetMetrics(metrics *models.Metric) error {
 	}
 }
 
-func (m *MemStorage) SetMetricsBatch(MetricBatch []models.Metric) error {
+func (m *MemStorage) SetMetricsBatch(MetricBatch []models.Metric, ctx context.Context) error {
 	MetricValueBatch := models.Metric{}
 	for _, OneMetric := range MetricBatch {
 		MetricValueBatch = models.Metric{
@@ -191,7 +192,7 @@ func (m *MemStorage) SetMetricsBatch(MetricBatch []models.Metric) error {
 			Delta: OneMetric.Delta,
 			Value: OneMetric.Value,
 		}
-		err := m.SetMetrics(&MetricValueBatch)
+		err := m.SetMetrics(&MetricValueBatch, ctx)
 		if err != nil {
 			return err
 		}

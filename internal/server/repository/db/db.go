@@ -42,13 +42,13 @@ func New(cfg config.Config) DBStor {
 	}
 }
 
-func (d DBStor) setGauge(key string, newMetricValue float64) error {
-	_, err := d.db.Exec("INSERT INTO gauge (name, value) VALUES ($1, $2) ON CONFLICT(name) DO UPDATE set value = $2", key, newMetricValue)
+func (d DBStor) setGauge(key string, newMetricValue float64, ctx context.Context) error {
+	_, err := d.db.ExecContext(ctx, "INSERT INTO gauge (name, value) VALUES ($1, $2) ON CONFLICT(name) DO UPDATE set value = $2", key, newMetricValue)
 	return err
 }
 
-func (d DBStor) setCounter(key string, newMetricValue int64) error {
-	_, err := d.db.Exec("INSERT INTO counter (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = counter.value + $2", key, newMetricValue)
+func (d DBStor) setCounter(key string, newMetricValue int64, ctx context.Context) error {
+	_, err := d.db.ExecContext(ctx, "INSERT INTO counter (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = counter.value + $2", key, newMetricValue)
 	return err
 }
 
@@ -133,14 +133,14 @@ func (d DBStor) Get(typ, name string) (string, error) {
 	}
 }
 
-func (d DBStor) Set(typ, name, value string) error {
+func (d DBStor) Set(typ, name, value string, ctx context.Context) error {
 	switch typ {
 	case "counter":
 		countValue, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			return err
 		}
-		err = d.setCounter(name, countValue)
+		err = d.setCounter(name, countValue, ctx)
 		if err != nil {
 			return err
 		}
@@ -150,7 +150,7 @@ func (d DBStor) Set(typ, name, value string) error {
 		if err != nil {
 			return err
 		}
-		err = d.setGauge(name, floatValue)
+		err = d.setGauge(name, floatValue, ctx)
 		if err != nil {
 			return err
 		}
@@ -201,7 +201,7 @@ func (d DBStor) GetMetricsByID(id, typ string, key string) (*models.Metric, erro
 	return &input, nil
 }
 
-func (d DBStor) SetMetrics(metric *models.Metric) error {
+func (d DBStor) SetMetrics(metric *models.Metric, ctx context.Context) error {
 	switch metric.MType {
 	case "gauge":
 		var gauge float64
@@ -210,7 +210,7 @@ func (d DBStor) SetMetrics(metric *models.Metric) error {
 		} else {
 			gauge = *metric.Value
 		}
-		err := d.setGauge(metric.ID, gauge)
+		err := d.setGauge(metric.ID, gauge, ctx)
 		if err != nil {
 			return err
 		}
@@ -220,7 +220,7 @@ func (d DBStor) SetMetrics(metric *models.Metric) error {
 		if metric.Delta == nil {
 			return errors.New("invalid params")
 		}
-		err := d.setCounter(metric.ID, *metric.Delta)
+		err := d.setCounter(metric.ID, *metric.Delta, ctx)
 		if err != nil {
 			return err
 		}
@@ -231,7 +231,7 @@ func (d DBStor) SetMetrics(metric *models.Metric) error {
 	}
 }
 
-func (d DBStor) SetMetricsBatch(MetricBatch []models.Metric) error {
+func (d DBStor) SetMetricsBatch(MetricBatch []models.Metric, ctx context.Context) error {
 	MetricValueBatch := models.Metric{}
 	for _, OneMetric := range MetricBatch {
 		MetricValueBatch = models.Metric{
@@ -240,7 +240,7 @@ func (d DBStor) SetMetricsBatch(MetricBatch []models.Metric) error {
 			Delta: OneMetric.Delta,
 			Value: OneMetric.Value,
 		}
-		err := d.SetMetrics(&MetricValueBatch)
+		err := d.SetMetrics(&MetricValueBatch, ctx)
 		if err != nil {
 			return err
 		}

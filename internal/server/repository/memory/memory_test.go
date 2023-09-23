@@ -1,11 +1,15 @@
 package memory
 
 import (
+	"context"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestMemStorage_Set(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	type fields struct {
 		mutex    *sync.RWMutex
 		Gauges   map[string]float64
@@ -15,6 +19,7 @@ func TestMemStorage_Set(t *testing.T) {
 		typ   string
 		name  string
 		value string
+		ctx   context.Context
 	}
 	tests := []struct {
 		name    string
@@ -33,6 +38,7 @@ func TestMemStorage_Set(t *testing.T) {
 				typ:   "counter",
 				name:  "test",
 				value: "1",
+				ctx:   ctx,
 			},
 			wantErr: false,
 		},
@@ -47,6 +53,7 @@ func TestMemStorage_Set(t *testing.T) {
 				typ:   "gauge",
 				name:  "test",
 				value: "1",
+				ctx:   ctx,
 			},
 			wantErr: false,
 		},
@@ -61,6 +68,7 @@ func TestMemStorage_Set(t *testing.T) {
 				typ:   "test",
 				name:  "test",
 				value: "1",
+				ctx:   ctx,
 			},
 			wantErr: true,
 		},
@@ -72,7 +80,7 @@ func TestMemStorage_Set(t *testing.T) {
 				Gauges:   tt.fields.Gauges,
 				Counters: tt.fields.Counters,
 			}
-			if err := m.Set(tt.args.typ, tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
+			if err := m.Set(tt.args.typ, tt.args.name, tt.args.value, tt.args.ctx); (err != nil) != tt.wantErr {
 				t.Errorf("Set() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

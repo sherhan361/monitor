@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"github.com/sherhan361/monitor/internal/models"
 	"github.com/sherhan361/monitor/internal/server/config"
 	"github.com/sherhan361/monitor/internal/server/repository/db"
@@ -10,11 +11,11 @@ import (
 type Getter interface {
 	GetAll() (map[string]float64, map[string]int64)
 	Get(typ, name string) (string, error)
-	Set(typ, name, value string) error
+	Set(typ, name, value string, ctx context.Context) error
 
 	GetMetricsByID(id, typ string, key string) (*models.Metric, error)
-	SetMetrics(*models.Metric) error
-	SetMetricsBatch(MetricsBatch []models.Metric) error
+	SetMetrics(metric *models.Metric, ctx context.Context) error
+	SetMetricsBatch(MetricsBatch []models.Metric, ctx context.Context) error
 
 	RestoreMetrics(filename string) error
 	WriteMetrics() error
