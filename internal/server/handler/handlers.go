@@ -57,7 +57,7 @@ func (h *Handlers) GetMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) CreateMetric(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 	typ := chi.URLParam(r, "type")
 	name := chi.URLParam(r, "name")
@@ -68,7 +68,7 @@ func (h *Handlers) CreateMetric(w http.ResponseWriter, r *http.Request) {
 	if status != http.StatusOK {
 		return
 	}
-	err := h.repository.Set(typ, name, value, ctx)
+	err := h.repository.Set(ctx, typ, name, value)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -128,7 +128,7 @@ func (h *Handlers) GetMetricsJSON(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handlers) CreateMetricsFromJSON(w http.ResponseWriter, r *http.Request) {
 	var reader io.Reader
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 	if r.Header.Get(`Content-Encoding`) == `gzip` {
 		gz, err := gzip.NewReader(r.Body)
@@ -164,7 +164,7 @@ func (h *Handlers) CreateMetricsFromJSON(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	err = h.repository.SetMetrics(&metric, ctx)
+	err = h.repository.SetMetrics(ctx, &metric)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -199,7 +199,7 @@ func (h *Handlers) CreateMetricsFromJSON(w http.ResponseWriter, r *http.Request)
 
 func (h *Handlers) CreateMetricBatchJSON(w http.ResponseWriter, r *http.Request) {
 	var reader io.Reader
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 	if r.Header.Get(`Content-Encoding`) == `gzip` {
 		gz, err := gzip.NewReader(r.Body)
@@ -237,7 +237,7 @@ func (h *Handlers) CreateMetricBatchJSON(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	err = h.repository.SetMetricsBatch(metrics, ctx)
+	err = h.repository.SetMetricsBatch(ctx, metrics)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)

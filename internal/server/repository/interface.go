@@ -11,11 +11,11 @@ import (
 type Getter interface {
 	GetAll() (map[string]float64, map[string]int64)
 	Get(typ, name string) (string, error)
-	Set(typ, name, value string, ctx context.Context) error
+	Set(ctx context.Context, typ, name, value string) error
 
 	GetMetricsByID(id, typ string, key string) (*models.Metric, error)
-	SetMetrics(metric *models.Metric, ctx context.Context) error
-	SetMetricsBatch(MetricsBatch []models.Metric, ctx context.Context) error
+	SetMetrics(ctx context.Context, metric *models.Metric) error
+	SetMetricsBatch(ctx context.Context, MetricsBatch []models.Metric) error
 
 	RestoreMetrics(filename string) error
 	WriteMetrics() error

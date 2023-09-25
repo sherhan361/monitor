@@ -74,7 +74,7 @@ func (m *MemStorage) Get(typ, name string) (string, error) {
 	return value, nil
 }
 
-func (m *MemStorage) Set(typ, name, value string, ctx context.Context) error {
+func (m *MemStorage) Set(ctx context.Context, typ, name, value string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -140,7 +140,7 @@ func (m *MemStorage) GetMetricsByID(id, typ string, signKey string) (*models.Met
 	return &input, nil
 }
 
-func (m *MemStorage) SetMetrics(metrics *models.Metric, ctx context.Context) error {
+func (m *MemStorage) SetMetrics(ctx context.Context, metrics *models.Metric) error {
 	m.mutex.Lock()
 
 	switch metrics.MType {
@@ -183,7 +183,7 @@ func (m *MemStorage) SetMetrics(metrics *models.Metric, ctx context.Context) err
 	}
 }
 
-func (m *MemStorage) SetMetricsBatch(MetricBatch []models.Metric, ctx context.Context) error {
+func (m *MemStorage) SetMetricsBatch(ctx context.Context, MetricBatch []models.Metric) error {
 	MetricValueBatch := models.Metric{}
 	for _, OneMetric := range MetricBatch {
 		MetricValueBatch = models.Metric{
@@ -192,7 +192,7 @@ func (m *MemStorage) SetMetricsBatch(MetricBatch []models.Metric, ctx context.Co
 			Delta: OneMetric.Delta,
 			Value: OneMetric.Value,
 		}
-		err := m.SetMetrics(&MetricValueBatch, ctx)
+		err := m.SetMetrics(ctx, &MetricValueBatch)
 		if err != nil {
 			return err
 		}

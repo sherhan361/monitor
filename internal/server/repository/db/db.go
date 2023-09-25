@@ -4,6 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/lib/pq"
 	"github.com/sherhan361/monitor/internal/common"
 	"github.com/sherhan361/monitor/internal/models"
 	"github.com/sherhan361/monitor/internal/server/config"
@@ -18,7 +22,7 @@ type DBStor struct {
 }
 
 func New(cfg config.Config) DBStor {
-	db, err := sql.Open("pgx", cfg.DSN)
+	db, err := sql.Open("postgres", cfg.DSN)
 	if err != nil {
 		log.Println("err:", err)
 	}
@@ -27,13 +31,14 @@ func New(cfg config.Config) DBStor {
 	db.SetConnMaxIdleTime(time.Second * 30)
 	db.SetConnMaxLifetime(time.Minute * 2)
 
-	_, err = db.Exec("CREATE TABLE IF NOT EXISTS counter (id serial PRIMARY KEY, name VARCHAR (128) UNIQUE NOT NULL, value BIGINT NOT NULL)")
+	m, err := migrate.New("file://internal/server/repository/db/migrations", cfg.DSN)
 	if err != nil {
-		log.Println("create counter table error:", err)
+		log.Fatal(err)
 	}
-	_, err = db.Exec("CREATE TABLE IF NOT EXISTS gauge (id serial PRIMARY KEY, name VARCHAR (128) UNIQUE NOT NULL, value DOUBLE PRECISION NOT NULL)")
-	if err != nil {
-		log.Println("create gauge table error:", err)
+	if _, _, err := m.Version(); err != nil {
+		if err := m.Up(); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	return DBStor{
@@ -42,12 +47,12 @@ func New(cfg config.Config) DBStor {
 	}
 }
 
-func (d DBStor) setGauge(key string, newMetricValue float64, ctx context.Context) error {
+func (d DBStor) setGauge(ctx context.Context, key string, newMetricValue float64) error {
 	_, err := d.db.ExecContext(ctx, "INSERT INTO gauge (name, value) VALUES ($1, $2) ON CONFLICT(name) DO UPDATE set value = $2", key, newMetricValue)
 	return err
 }
 
-func (d DBStor) setCounter(key string, newMetricValue int64, ctx context.Context) error {
+func (d DBStor) setCounter(ctx context.Context, key string, newMetricValue int64) error {
 	_, err := d.db.ExecContext(ctx, "INSERT INTO counter (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = counter.value + $2", key, newMetricValue)
 	return err
 }
@@ -133,14 +138,14 @@ func (d DBStor) Get(typ, name string) (string, error) {
 	}
 }
 
-func (d DBStor) Set(typ, name, value string, ctx context.Context) error {
+func (d DBStor) Set(ctx context.Context, typ, name, value string) error {
 	switch typ {
 	case "counter":
 		countValue, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			return err
 		}
-		err = d.setCounter(name, countValue, ctx)
+		err = d.setCounter(ctx, name, countValue)
 		if err != nil {
 			return err
 		}
@@ -150,7 +155,7 @@ func (d DBStor) Set(typ, name, value string, ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		err = d.setGauge(name, floatValue, ctx)
+		err = d.setGauge(ctx, name, floatValue)
 		if err != nil {
 			return err
 		}
@@ -201,7 +206,7 @@ func (d DBStor) GetMetricsByID(id, typ string, key string) (*models.Metric, erro
 	return &input, nil
 }
 
-func (d DBStor) SetMetrics(metric *models.Metric, ctx context.Context) error {
+func (d DBStor) SetMetrics(ctx context.Context, metric *models.Metric) error {
 	switch metric.MType {
 	case "gauge":
 		var gauge float64
@@ -210,7 +215,7 @@ func (d DBStor) SetMetrics(metric *models.Metric, ctx context.Context) error {
 		} else {
 			gauge = *metric.Value
 		}
-		err := d.setGauge(metric.ID, gauge, ctx)
+		err := d.setGauge(ctx, metric.ID, gauge)
 		if err != nil {
 			return err
 		}
@@ -220,7 +225,7 @@ func (d DBStor) SetMetrics(metric *models.Metric, ctx context.Context) error {
 		if metric.Delta == nil {
 			return errors.New("invalid params")
 		}
-		err := d.setCounter(metric.ID, *metric.Delta, ctx)
+		err := d.setCounter(ctx, metric.ID, *metric.Delta)
 		if err != nil {
 			return err
 		}
@@ -231,7 +236,7 @@ func (d DBStor) SetMetrics(metric *models.Metric, ctx context.Context) error {
 	}
 }
 
-func (d DBStor) SetMetricsBatch(MetricBatch []models.Metric, ctx context.Context) error {
+func (d DBStor) SetMetricsBatch(ctx context.Context, MetricBatch []models.Metric) error {
 	MetricValueBatch := models.Metric{}
 	for _, OneMetric := range MetricBatch {
 		MetricValueBatch = models.Metric{
@@ -240,7 +245,7 @@ func (d DBStor) SetMetricsBatch(MetricBatch []models.Metric, ctx context.Context
 			Delta: OneMetric.Delta,
 			Value: OneMetric.Value,
 		}
-		err := d.SetMetrics(&MetricValueBatch, ctx)
+		err := d.SetMetrics(ctx, &MetricValueBatch)
 		if err != nil {
 			return err
 		}

@@ -16,10 +16,10 @@ func TestMemStorage_Set(t *testing.T) {
 		Counters map[string]int64
 	}
 	type args struct {
+		ctx   context.Context
 		typ   string
 		name  string
 		value string
-		ctx   context.Context
 	}
 	tests := []struct {
 		name    string
@@ -35,10 +35,10 @@ func TestMemStorage_Set(t *testing.T) {
 				Counters: map[string]int64{},
 			},
 			args: args{
+				ctx:   ctx,
 				typ:   "counter",
 				name:  "test",
 				value: "1",
-				ctx:   ctx,
 			},
 			wantErr: false,
 		},
@@ -50,10 +50,10 @@ func TestMemStorage_Set(t *testing.T) {
 				Counters: map[string]int64{},
 			},
 			args: args{
+				ctx:   ctx,
 				typ:   "gauge",
 				name:  "test",
 				value: "1",
-				ctx:   ctx,
 			},
 			wantErr: false,
 		},
@@ -65,10 +65,10 @@ func TestMemStorage_Set(t *testing.T) {
 				Counters: map[string]int64{},
 			},
 			args: args{
+				ctx:   ctx,
 				typ:   "test",
 				name:  "test",
 				value: "1",
-				ctx:   ctx,
 			},
 			wantErr: true,
 		},
@@ -80,7 +80,7 @@ func TestMemStorage_Set(t *testing.T) {
 				Gauges:   tt.fields.Gauges,
 				Counters: tt.fields.Counters,
 			}
-			if err := m.Set(tt.args.typ, tt.args.name, tt.args.value, tt.args.ctx); (err != nil) != tt.wantErr {
+			if err := m.Set(tt.args.ctx, tt.args.typ, tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
 				t.Errorf("Set() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
