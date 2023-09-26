@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,10 @@ type MemStorage struct {
 	Gauges   map[string]float64
 	Counters map[string]int64
 	Config   config.Config
+}
+
+func (m *MemStorage) Ping() error {
+	return nil
 }
 
 func New(cfg config.Config) *MemStorage {
@@ -51,7 +56,7 @@ func (m *MemStorage) Get(typ, name string) (string, error) {
 	case "gauge":
 		val, ok := m.Gauges[name]
 		if ok {
-			value = fmt.Sprintf("%.3f", val)
+			value = fmt.Sprintf("%v", val)
 		} else {
 			return "", errors.New("metric name not found in Gauges")
 		}
@@ -59,7 +64,7 @@ func (m *MemStorage) Get(typ, name string) (string, error) {
 	case "counter":
 		val, ok := m.Counters[name]
 		if ok {
-			value = fmt.Sprintf("%d", val)
+			value = fmt.Sprintf("%v", val)
 		} else {
 			return "", errors.New("metric name not found in Counters")
 		}
@@ -69,7 +74,7 @@ func (m *MemStorage) Get(typ, name string) (string, error) {
 	return value, nil
 }
 
-func (m *MemStorage) Set(typ, name, value string) error {
+func (m *MemStorage) Set(ctx context.Context, typ, name, value string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -135,7 +140,7 @@ func (m *MemStorage) GetMetricsByID(id, typ string, signKey string) (*models.Met
 	return &input, nil
 }
 
-func (m *MemStorage) SetMetrics(metrics *models.Metric) error {
+func (m *MemStorage) SetMetrics(ctx context.Context, metrics *models.Metric) error {
 	m.mutex.Lock()
 
 	switch metrics.MType {
@@ -176,6 +181,23 @@ func (m *MemStorage) SetMetrics(metrics *models.Metric) error {
 		m.mutex.Unlock()
 		return errors.New("invalid metric type")
 	}
+}
+
+func (m *MemStorage) SetMetricsBatch(ctx context.Context, MetricBatch []models.Metric) error {
+	MetricValueBatch := models.Metric{}
+	for _, OneMetric := range MetricBatch {
+		MetricValueBatch = models.Metric{
+			ID:    OneMetric.ID,
+			MType: OneMetric.MType,
+			Delta: OneMetric.Delta,
+			Value: OneMetric.Value,
+		}
+		err := m.SetMetrics(ctx, &MetricValueBatch)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (m *MemStorage) RestoreMetrics(filename string) error {

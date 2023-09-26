@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/sherhan361/monitor/internal/common"
 	"github.com/sherhan361/monitor/internal/models"
+	"log"
 	"math/rand"
 	"net/http"
 	"runtime"
@@ -38,6 +39,7 @@ func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Du
 		updateMetrics(m, &rtm)
 		if time.Since(lastSend) >= reportInterval {
 			sendReport(m, baseURL, key)
+			sendBatchReport(m, baseURL, key)
 			lastSend = time.Now()
 		}
 	}
@@ -57,20 +59,20 @@ func sendReport(m *Metrics, baseURL string, signKey string) {
 		if signKey != "" {
 			oneMetric.Hash = common.GetHash(oneMetric, signKey)
 		}
-		fmt.Println("gauge oneMetric:", oneMetric)
+		log.Println("gauge oneMetric:", oneMetric)
 		metricJSON, err := json.Marshal(oneMetric)
 		if err != nil {
-			fmt.Printf("json Gauges Error: %s\n", err)
+			log.Printf("json Gauges Error: %s\n", err)
 		}
 		resp, err := client.Post(url, contentType, bytes.NewBuffer(metricJSON))
 		if err != nil {
-			fmt.Printf("Send Gauges Error: %s\n", err)
+			log.Printf("Send Gauges Error: %s\n", err)
 		} else {
 			resp.Body.Close()
 		}
 
 	}
-	fmt.Println("app.metrics.Counters:", m.Counters)
+	log.Println("app.metrics.Counters:", m.Counters)
 	for key, value := range m.Counters {
 		oneMetric := models.Metric{
 			ID:    key,
@@ -80,18 +82,60 @@ func sendReport(m *Metrics, baseURL string, signKey string) {
 		if signKey != "" {
 			oneMetric.Hash = common.GetHash(oneMetric, signKey)
 		}
-		fmt.Println("counter oneMetric:", oneMetric)
+		log.Println("counter oneMetric:", oneMetric)
 		metricJSON, err := json.Marshal(oneMetric)
 		if err != nil {
-			fmt.Printf("json Counters Error: %s\n", err)
+			log.Printf("json Counters Error: %s\n", err)
 		}
 		resp, err := client.Post(url, contentType, bytes.NewBuffer(metricJSON))
 		if err != nil {
-			fmt.Printf("Send Counters Error: %s\n", err)
+			log.Printf("Send Counters Error: %s\n", err)
 		} else {
 			m.Counters["PollCount"] = 0
 			resp.Body.Close()
 		}
+	}
+}
+
+func sendBatchReport(m *Metrics, baseURL string, signKey string) {
+	var metrics []models.Metric
+	var client = http.Client{}
+	url := fmt.Sprintf("http://%s/%s", baseURL, "updates")
+	contentType := "application/json"
+
+	for key, value := range m.Gauges {
+		oneMetric := models.Metric{
+			ID:    key,
+			MType: "gauge",
+			Value: &value,
+		}
+		if signKey != "" {
+			oneMetric.Hash = common.GetHash(oneMetric, signKey)
+		}
+		metrics = append(metrics, oneMetric)
+	}
+	for key, value := range m.Counters {
+		oneMetric := models.Metric{
+			ID:    key,
+			MType: "counter",
+			Delta: &value,
+		}
+		if signKey != "" {
+			oneMetric.Hash = common.GetHash(oneMetric, signKey)
+		}
+		metrics = append(metrics, oneMetric)
+	}
+	metricsJSON, err := json.Marshal(metrics)
+	if err != nil {
+		log.Printf("json Error: %s\n", err)
+	}
+	log.Println("metrics:", metrics)
+	resp, err := client.Post(url, contentType, bytes.NewBuffer(metricsJSON))
+	if err != nil {
+		log.Printf("Send Error: %s\n", err)
+	} else {
+		m.Counters["PollCount"] = 0
+		resp.Body.Close()
 	}
 }
 
