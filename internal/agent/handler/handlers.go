@@ -12,17 +12,20 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 type Metrics struct {
-	mutex    sync.RWMutex
+	*sync.RWMutex
 	Gauges   map[string]float64
 	Counters map[string]int64
 }
 
 func NewMonitor(pollInterval time.Duration, reportInterval time.Duration, baseURL string, key string) {
 	m := &Metrics{
-		mutex:    sync.RWMutex{},
+		RWMutex:  &sync.RWMutex{},
 		Gauges:   make(map[string]float64),
 		Counters: make(map[string]int64),
 	}
@@ -140,8 +143,8 @@ func sendBatchReport(m *Metrics, baseURL string, signKey string) {
 }
 
 func updateMetrics(m *Metrics, rtm *runtime.MemStats) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	m.Lock()
+	defer m.Unlock()
 
 	m.Gauges["Alloc"] = float64(rtm.Alloc)
 	m.Gauges["BuckHashSys"] = float64(rtm.BuckHashSys)
@@ -174,4 +177,29 @@ func updateMetrics(m *Metrics, rtm *runtime.MemStats) {
 	m.Gauges["RandomValue"] = rand.Float64()
 
 	m.Counters["PollCount"] = m.Counters["PollCount"] + 1
+}
+
+func updateExtraMetrics(m *Metrics) error {
+	metrics, err := mem.VirtualMemory()
+	if err != nil {
+		return nil
+	}
+
+	m.Lock()
+	defer m.Unlock()
+
+	m.Gauges["TotalMemory"] = float64(metrics.Total)
+	m.Gauges["FreeMemory"] = float64(metrics.Free)
+
+	percentageCPU, err := cpu.Percent(0, true)
+	if err != nil {
+		return err
+	}
+
+	for i, currentPercentageCPU := range percentageCPU {
+		metricName := fmt.Sprintf("CPUutilization%v", i)
+		m.Gauges[metricName] = float64(currentPercentageCPU)
+	}
+
+	return nil
 }
