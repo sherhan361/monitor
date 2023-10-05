@@ -34,12 +34,10 @@ func NewMonitor(pollInterval time.Duration, reportInterval time.Duration, baseUR
 }
 
 func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Duration, baseURL string, key string, rateLimit int) {
-	var rtm runtime.MemStats
 	var lastSend time.Time
 	for {
 		<-time.After(pollInterval)
-		runtime.ReadMemStats(&rtm)
-		updateMetrics(m, &rtm)
+		updateMetrics(m)
 		updateExtraMetrics(m)
 		if time.Since(lastSend) >= reportInterval {
 			sendReport(m, baseURL, key)
@@ -143,7 +141,10 @@ func sendBatchReport(m *Metrics, baseURL string, signKey string) {
 	}
 }
 
-func updateMetrics(m *Metrics, rtm *runtime.MemStats) {
+func updateMetrics(m *Metrics) {
+	var rtm runtime.MemStats
+	runtime.ReadMemStats(&rtm)
+
 	m.Lock()
 	defer m.Unlock()
 
