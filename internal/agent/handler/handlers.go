@@ -23,23 +23,24 @@ type Metrics struct {
 	Counters map[string]int64
 }
 
-func NewMonitor(pollInterval time.Duration, reportInterval time.Duration, baseURL string, key string) {
+func NewMonitor(pollInterval time.Duration, reportInterval time.Duration, baseURL string, key string, rateLimit int) {
 	m := &Metrics{
 		RWMutex:  &sync.RWMutex{},
 		Gauges:   make(map[string]float64),
 		Counters: make(map[string]int64),
 	}
 
-	startMonitor(m, pollInterval, reportInterval, baseURL, key)
+	startMonitor(m, pollInterval, reportInterval, baseURL, key, rateLimit)
 }
 
-func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Duration, baseURL string, key string) {
+func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Duration, baseURL string, key string, rateLimit int) {
 	var rtm runtime.MemStats
 	var lastSend time.Time
 	for {
 		<-time.After(pollInterval)
 		runtime.ReadMemStats(&rtm)
 		updateMetrics(m, &rtm)
+		updateExtraMetrics(m)
 		if time.Since(lastSend) >= reportInterval {
 			sendReport(m, baseURL, key)
 			sendBatchReport(m, baseURL, key)
@@ -179,27 +180,18 @@ func updateMetrics(m *Metrics, rtm *runtime.MemStats) {
 	m.Counters["PollCount"] = m.Counters["PollCount"] + 1
 }
 
-func updateExtraMetrics(m *Metrics) error {
-	metrics, err := mem.VirtualMemory()
-	if err != nil {
-		return nil
-	}
-
+func updateExtraMetrics(m *Metrics) {
+	metrics, _ := mem.VirtualMemory()
 	m.Lock()
 	defer m.Unlock()
 
 	m.Gauges["TotalMemory"] = float64(metrics.Total)
 	m.Gauges["FreeMemory"] = float64(metrics.Free)
 
-	percentageCPU, err := cpu.Percent(0, true)
-	if err != nil {
-		return err
-	}
+	percentageCPU, _ := cpu.Percent(0, true)
 
 	for i, currentPercentageCPU := range percentageCPU {
 		metricName := fmt.Sprintf("CPUutilization%v", i)
 		m.Gauges[metricName] = float64(currentPercentageCPU)
 	}
-
-	return nil
 }
