@@ -33,9 +33,30 @@ func NewMonitor(pollInterval time.Duration, reportInterval time.Duration, baseUR
 	startMonitor(m, pollInterval, reportInterval, baseURL, key, rateLimit)
 }
 
+type Job struct {
+	URL         string
+	contentType string
+	metricsJSON []byte
+}
+
+func makePostRequest(url string, contentType string, metricsJSON []byte) {
+	var client = http.Client{}
+	log.Println("making request to", url)
+
+	resp, err := client.Post(url, contentType, bytes.NewBuffer(metricsJSON))
+	if err != nil {
+		log.Printf("Send Gauges Error: %s\n", err)
+	} else {
+		resp.Body.Close()
+	}
+
+	log.Println("success", url)
+}
+
 func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Duration, baseURL string, key string, rateLimit int) {
 	var lastSend time.Time
 	wgRefresh := sync.WaitGroup{}
+
 	for {
 		<-time.After(pollInterval)
 		wgRefresh.Add(2)
@@ -51,17 +72,25 @@ func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Du
 		}()
 		if time.Since(lastSend) >= reportInterval {
 			wgRefresh.Wait()
+			jobCh := make(chan *Job)
+			for i := 0; i < rateLimit; i++ {
+				go func() {
+					for job := range jobCh {
+						makePostRequest(job.URL, job.contentType, job.metricsJSON)
+					}
+				}()
+			}
+
 			go func() {
-				sendReport(m, baseURL, key)
-				sendBatchReport(m, baseURL, key)
+				sendReport(m, baseURL, key, jobCh)
+				sendBatchReport(m, baseURL, key, jobCh)
 			}()
 			lastSend = time.Now()
 		}
 	}
 }
 
-func sendReport(m *Metrics, baseURL string, signKey string) {
-	var client = http.Client{}
+func sendReport(m *Metrics, baseURL string, signKey string, jobCh chan *Job) {
 	url := fmt.Sprintf("http://%s/%s", baseURL, "update")
 	contentType := "application/json"
 
@@ -80,12 +109,8 @@ func sendReport(m *Metrics, baseURL string, signKey string) {
 			log.Printf("json Gauges Error: %s\n", err)
 		}
 
-		resp, err := client.Post(url, contentType, bytes.NewBuffer(metricJSON))
-		if err != nil {
-			log.Printf("Send Gauges Error: %s\n", err)
-		} else {
-			resp.Body.Close()
-		}
+		job := &Job{URL: url, contentType: contentType, metricsJSON: metricJSON}
+		jobCh <- job
 
 	}
 	log.Println("app.metrics.Counters:", m.Counters)
@@ -103,19 +128,14 @@ func sendReport(m *Metrics, baseURL string, signKey string) {
 		if err != nil {
 			log.Printf("json Counters Error: %s\n", err)
 		}
-		resp, err := client.Post(url, contentType, bytes.NewBuffer(metricJSON))
-		if err != nil {
-			log.Printf("Send Counters Error: %s\n", err)
-		} else {
-			//m.Counters["PollCount"] = 0
-			resp.Body.Close()
-		}
+		job := &Job{URL: url, contentType: contentType, metricsJSON: metricJSON}
+		jobCh <- job
+
 	}
 }
 
-func sendBatchReport(m *Metrics, baseURL string, signKey string) {
+func sendBatchReport(m *Metrics, baseURL string, signKey string, jobCh chan *Job) {
 	var metrics []models.Metric
-	var client = http.Client{}
 	url := fmt.Sprintf("http://%s/%s", baseURL, "updates")
 	contentType := "application/json"
 
@@ -146,13 +166,10 @@ func sendBatchReport(m *Metrics, baseURL string, signKey string) {
 		log.Printf("json Error: %s\n", err)
 	}
 	log.Println("metrics:", metrics)
-	resp, err := client.Post(url, contentType, bytes.NewBuffer(metricsJSON))
-	if err != nil {
-		log.Printf("Send Error: %s\n", err)
-	} else {
-		//m.Counters["PollCount"] = 0
-		resp.Body.Close()
-	}
+
+	job := &Job{URL: url, contentType: contentType, metricsJSON: metricsJSON}
+	jobCh <- job
+
 }
 
 func updateMetrics(m *Metrics) {
