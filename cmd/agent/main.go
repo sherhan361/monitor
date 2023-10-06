@@ -13,6 +13,7 @@ type Config struct {
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
 	PollInterval   time.Duration `env:"POLL_INTERVAL"`
 	Key            string        `env:"KEY"`
+	RateLimit      int           `env:"RATE_LIMIT"`
 }
 
 type ArgConfig struct {
@@ -20,6 +21,7 @@ type ArgConfig struct {
 	ReportInterval time.Duration
 	PollInterval   time.Duration
 	Key            string
+	RateLimit      int
 }
 
 func main() {
@@ -34,6 +36,7 @@ func main() {
 	flag.DurationVar(&argCfg.ReportInterval, "r", time.Duration(10*time.Second), "report interval")
 	flag.DurationVar(&argCfg.PollInterval, "p", time.Duration(2*time.Second), "poll interval")
 	flag.StringVar(&argCfg.Key, "k", "", "sign key")
+	flag.IntVar(&argCfg.RateLimit, "l", 1, "RATE LIMIT")
 	flag.Parse()
 
 	log.Println("agent argCfg.Key:", argCfg.Key)
@@ -50,7 +53,10 @@ func main() {
 	if cfg.Key == "" {
 		cfg.Key = argCfg.Key
 	}
+	if cfg.RateLimit == 0 {
+		cfg.RateLimit = argCfg.RateLimit
+	}
 
 	log.Println("agent cfg:", cfg)
-	handler.NewMonitor(cfg.PollInterval, cfg.ReportInterval, cfg.BaseURL, cfg.Key)
+	handler.NewMonitor(cfg.PollInterval, cfg.ReportInterval, cfg.BaseURL, cfg.Key, cfg.RateLimit)
 }
