@@ -35,13 +35,26 @@ func NewMonitor(pollInterval time.Duration, reportInterval time.Duration, baseUR
 
 func startMonitor(m *Metrics, pollInterval time.Duration, reportInterval time.Duration, baseURL string, key string, rateLimit int) {
 	var lastSend time.Time
+	wgRefresh := sync.WaitGroup{}
 	for {
 		<-time.After(pollInterval)
-		updateMetrics(m)
-		updateExtraMetrics(m)
+		wgRefresh.Add(2)
+
+		go func() {
+			defer wgRefresh.Done()
+			updateMetrics(m)
+		}()
+
+		go func() {
+			updateExtraMetrics(m)
+			defer wgRefresh.Done()
+		}()
 		if time.Since(lastSend) >= reportInterval {
-			sendReport(m, baseURL, key)
-			sendBatchReport(m, baseURL, key)
+			wgRefresh.Wait()
+			go func() {
+				sendReport(m, baseURL, key)
+				sendBatchReport(m, baseURL, key)
+			}()
 			lastSend = time.Now()
 		}
 	}
@@ -66,6 +79,7 @@ func sendReport(m *Metrics, baseURL string, signKey string) {
 		if err != nil {
 			log.Printf("json Gauges Error: %s\n", err)
 		}
+
 		resp, err := client.Post(url, contentType, bytes.NewBuffer(metricJSON))
 		if err != nil {
 			log.Printf("Send Gauges Error: %s\n", err)
@@ -93,7 +107,7 @@ func sendReport(m *Metrics, baseURL string, signKey string) {
 		if err != nil {
 			log.Printf("Send Counters Error: %s\n", err)
 		} else {
-			m.Counters["PollCount"] = 0
+			//m.Counters["PollCount"] = 0
 			resp.Body.Close()
 		}
 	}
@@ -136,7 +150,7 @@ func sendBatchReport(m *Metrics, baseURL string, signKey string) {
 	if err != nil {
 		log.Printf("Send Error: %s\n", err)
 	} else {
-		m.Counters["PollCount"] = 0
+		//m.Counters["PollCount"] = 0
 		resp.Body.Close()
 	}
 }
